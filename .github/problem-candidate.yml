@@ -1,0 +1,92 @@
+name: "Problem Candidate"
+description: "A real-world problem to investigate"
+title: "Problem: "
+labels: ["type/problem", "stage/0-intake"]
+body:
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain (choose best match)
+      options:
+        - home
+        - health
+        - finance
+        - work
+        - education
+        - travel
+        - family
+        - food
+        - mobility
+        - shopping
+        - admin-bureaucracy
+        - security-privacy
+    validations:
+      required: true
+
+  - type: dropdown
+    id: persona
+    attributes:
+      label: Primary persona
+      options:
+        - consumer
+        - family-parent
+        - student
+        - employee
+        - freelancer
+        - smb-owner
+        - enterprise
+        - senior
+    validations:
+      required: true
+
+  - type: textarea
+    id: jtbd
+    attributes:
+      label: JTBD one-liner
+      description: "Format: When ___, I want to ___, so I can ___."
+      placeholder: "When I need to ___, I want to ___, so I can ___."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & frequency
+      description: "When does it happen? How often?"
+      placeholder: "Happens 2-3x/week when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: pain
+    attributes:
+      label: Why it’s painful
+      description: "Time lost, money lost, stress, risk, embarrassment, missed opportunities."
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround (how people solve it today)
+      placeholder: "Spreadsheets, asking friends, paying a service, ignoring it..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / signals (optional)
+      description: "Links, quotes, anecdotes, search phrases, forum references."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints (check any that apply)
+      options:
+        - label: "May involve regulated data (health/finance/kids)"
+        - label: "May require partnerships or proprietary data access"
+        - label: "May require hardware/IoT"
+        - label: "May require local/on-site operations"

@@ -1,0 +1,27 @@
+name: "Cluster Meta"
+description: "A group of similar problems (managed by Deduper agent)"
+title: "Cluster: "
+labels: ["type/cluster"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Cluster summary
+      placeholder: "What ties these problems together? Who experiences them?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: included
+    attributes:
+      label: Included problems (issue links)
+      placeholder: "- #123\n- #124"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / emerging patterns
+    validations:
+      required: false

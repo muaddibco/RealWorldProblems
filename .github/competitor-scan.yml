@@ -1,0 +1,36 @@
+name: "Competitor Scan"
+description: "Direct competitors + substitutes + pricing + notes"
+title: "Competitors: "
+labels: ["type/competitor-scan", "stage/5-competitors"]
+body:
+  - type: textarea
+    id: problem_link
+    attributes:
+      label: Linked problem issue
+      placeholder: "#123"
+    validations:
+      required: true
+
+  - type: textarea
+    id: direct
+    attributes:
+      label: Direct competitors (3–10)
+      placeholder: "- Name — what they do — pricing — link"
+    validations:
+      required: true
+
+  - type: textarea
+    id: substitutes
+    attributes:
+      label: Substitutes / workarounds
+      placeholder: "- Spreadsheets\n- Hiring a VA\n- Existing platform feature..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: opportunities
+    attributes:
+      label: Observed gaps / opportunities
+      placeholder: "What looks underserved? What do reviews complain about?"
+    validations:
+      required: true

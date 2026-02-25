@@ -1,0 +1,44 @@
+name: "Solution Hypothesis"
+description: "High-level product idea + wedge + MVP scope"
+title: "Solution: "
+labels: ["type/solution", "stage/4-solution"]
+body:
+  - type: textarea
+    id: problem_link
+    attributes:
+      label: Linked problem issue
+      placeholder: "#123"
+    validations:
+      required: true
+
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Solution hypothesis (1 paragraph)
+      placeholder: "A product that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: wedge
+    attributes:
+      label: Differentiation wedge (why you win)
+      placeholder: "Channel wedge, niche ICP, automation, integrations, business model..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: mvp
+    attributes:
+      label: MVP scope (3–7 bullets)
+      placeholder: "- Must-have 1\n- Must-have 2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: not_mvp
+    attributes:
+      label: Not MVP (explicitly out of scope)
+      placeholder: "- Not MVP 1\n- Not MVP 2"
+    validations:
+      required: true

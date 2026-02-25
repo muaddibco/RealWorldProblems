@@ -1,0 +1,52 @@
+name: "Validation Experiment"
+description: "Test demand + willingness to pay before building"
+title: "Experiment: "
+labels: ["type/experiment", "stage/7-validation"]
+body:
+  - type: textarea
+    id: linked_problem
+    attributes:
+      label: Linked problem issue
+      placeholder: "#123"
+    validations:
+      required: true
+
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis to test
+      placeholder: "We believe that [persona] will [do/pay] because..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: method
+    attributes:
+      label: Method
+      description: "Pick one: interviews, landing page, concierge MVP, waitlist, paid pilot."
+      placeholder: "10 interviews + landing page + price test"
+    validations:
+      required: true
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria (pass/fail)
+      placeholder: "Pass if ≥ 30% conversion to waitlist OR 3 paid pilots..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: script
+    attributes:
+      label: Interview script / questions (if applicable)
+    validations:
+      required: false
+
+  - type: textarea
+    id: next
+    attributes:
+      label: Next action if PASS / if FAIL
+      placeholder: "PASS: build MVP\nFAIL: archive with reason"
+    validations:
+      required: true
