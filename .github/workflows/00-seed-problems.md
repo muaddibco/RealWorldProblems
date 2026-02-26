@@ -116,6 +116,17 @@ Use this order; wrap around as needed:
 - The JTBD, context, pain, and workaround must clearly reflect that theme.
 - If the output looks like a near-duplicate of an earlier theme output in the same run, regenerate.
 
+## Safe outputs (MANDATORY)
+You MUST output safe-output operations as **NDJSON** (one JSON object per line).
+Do NOT attempt to call `create_issue` as a tool.
+
+For each new issue you want created, output one line like:
+{"type":"create_issue","title":"Problem: ...","body":"...","labels":["type/problem","stage/0-intake","domain/<domain>","persona/<persona>"]}
+
+Create up to `${{ inputs.count }}` issues (at least 1 if possible).
+If you create zero issues, output exactly one noop line:
+{"type":"noop","message":"No issues created because <reason>"} 
+
 ## include_regulated handling
 - If include_regulated=false:
   - Avoid problems that require handling medical diagnoses, financial account credentials, children’s personal data, or anything likely to require compliance-heavy workflows.
