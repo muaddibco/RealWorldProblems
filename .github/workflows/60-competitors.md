@@ -55,6 +55,7 @@ safe-outputs:
 Operate ONLY if:
 - type/problem
 - stage/5-competitors
+- and does NOT have label agentic-workflows
 
 If web-search/web-fetch are missing, still produce a best-effort list and clearly mark “Needs verification”.
 

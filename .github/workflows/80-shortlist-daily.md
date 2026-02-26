@@ -38,6 +38,7 @@ Generate a ranked list of the 10 most promising `type/problem` issues, prioritiz
 - score/top-10 then score/top-50
 - risk/low then risk/medium
 - and stages 6–7 (shortlist/validation)
+- excluding issues labeled `agentic-workflows`
 
 ## Output
 Create ONE issue titled "[top10] <YYYY-MM-DD>" containing:

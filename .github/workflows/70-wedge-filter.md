@@ -46,6 +46,7 @@ safe-outputs:
 Operate ONLY if:
 - type/problem
 - stage/6-shortlist
+- and does NOT have label agentic-workflows
 
 ## Decide wedge quality
 Pick exactly one:

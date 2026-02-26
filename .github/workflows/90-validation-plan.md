@@ -47,6 +47,7 @@ Operate ONLY if:
 - type/problem
 - stage/7-validation
 - and wedge/credible OR status/shortlisted
+- and does NOT have label agentic-workflows
 
 ## 1) Write the validation plan into the parent issue
 

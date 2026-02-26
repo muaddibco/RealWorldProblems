@@ -49,6 +49,7 @@ Keep the repo clean and the pipeline consistent.
 
 ## What to check/fix
 For up to 10 issues per run (to limit churn):
+0) Skip any issue that has label `agentic-workflows`.
 1) For `type/problem` issues:
    - Ensure exactly ONE `stage/*` label. If multiple, keep the earliest stage and remove the rest.
    - Ensure exactly ONE `persona/*`. If missing, add `status/needs-info`.

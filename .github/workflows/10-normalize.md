@@ -46,6 +46,7 @@ safe-outputs:
 Operate ONLY if the issue has labels:
 - type/problem
 - stage/0-intake
+- and does NOT have label agentic-workflows
 
 Otherwise emit noop.
 

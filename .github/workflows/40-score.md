@@ -43,6 +43,7 @@ Operate ONLY if:
 - type/problem
 - stage/3-scored
 - and software-fit is yes or partial (software-fit/yes or software-fit/partial)
+- and does NOT have label agentic-workflows
 
 If software-fit is missing, add comment requesting it (or noop if not allowed) and stop.
 

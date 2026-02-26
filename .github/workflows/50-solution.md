@@ -42,6 +42,7 @@ safe-outputs:
 Operate ONLY if:
 - type/problem
 - stage/4-solution
+- and does NOT have label agentic-workflows
 
 ## Write into solution island
 

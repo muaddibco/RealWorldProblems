@@ -46,6 +46,7 @@ safe-outputs:
 Operate ONLY if:
 - type/problem
 - stage/2-deduped
+- and does NOT have label agentic-workflows
 
 Otherwise noop.
 
