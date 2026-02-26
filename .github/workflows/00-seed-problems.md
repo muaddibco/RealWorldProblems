@@ -52,6 +52,8 @@ tools:
     read-only: true
 
 safe-outputs:
+  staged: false
+  github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   create-issue:
     # Base labels; the agent SHOULD also include domain/* and persona/* labels per issue if allowed
     labels: [type/problem, stage/0-intake]
