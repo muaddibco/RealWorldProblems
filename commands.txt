@@ -1,0 +1,5 @@
+This is just a file with useful commands
+
+gh aw compile
+
+gh aw audit ###

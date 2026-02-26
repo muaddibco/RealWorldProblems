@@ -50,6 +50,11 @@ Operate ONLY if the issue has labels:
 
 Otherwise emit noop.
 
+Tooling note:
+- Read the target issue using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
+- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+
 ## If missing required info
 - Add a short comment listing exactly what’s missing.
 - Add label: status/needs-info
