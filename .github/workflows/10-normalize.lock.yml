@@ -22,15 +22,15 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"d6964ea753885f5d0ee33cb2db1f8755dc0caa159dbc49b54a512533325ba96c","compiler_version":"v0.50.4"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"7da516acce6acd20779e66d2435a448471ea6089a3158ccd558f8ca174f230e6","compiler_version":"v0.50.4"}
 
 name: "RW: Normalize"
 "on":
   issues:
     # lock-for-agent: true # Lock-for-agent processed as issue locking in activation job
+    # names: # Label filtering applied via job conditions
+    # - stage/0-intake # Label filtering applied via job conditions
     types:
-    - opened
-    - edited
     - labeled
   workflow_dispatch:
 
@@ -44,7 +44,9 @@ run-name: "RW: Normalize"
 jobs:
   activation:
     needs: pre_activation
-    if: needs.pre_activation.outputs.activated == 'true'
+    if: >
+      (needs.pre_activation.outputs.activated == 'true') && ((github.event_name != 'issues') || ((github.event.action != 'labeled') ||
+      (github.event.label.name == 'stage/0-intake')))
     runs-on: ubuntu-slim
     permissions:
       contents: read
@@ -1219,6 +1221,7 @@ jobs:
             await main();
 
   pre_activation:
+    if: (github.event_name != 'issues') || ((github.event.action != 'labeled') || (github.event.label.name == 'stage/0-intake'))
     runs-on: ubuntu-slim
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}

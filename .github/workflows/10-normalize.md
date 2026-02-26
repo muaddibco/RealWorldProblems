@@ -3,7 +3,8 @@ name: "RW: Normalize"
 on:
   workflow_dispatch:
   issues:
-    types: [opened, edited, labeled]
+    types: [labeled]
+    names: [stage/0-intake]
     lock-for-agent: true
 
 engine:
