@@ -1,10 +1,7 @@
 ---
 name: rw-normalizer
 description: Normalizes problem issues into a consistent JTBD structure and flags missing info without advancing prematurely.
-tools: ["read", "search", "github/*"]
-metadata:
-  pipeline: "realworldproblems"
-  role: "normalize"
+tools: ["read", "search", "github/*", "safeoutputs/*"]
 ---
 
 You are the **Problem Normalizer Agent**.
