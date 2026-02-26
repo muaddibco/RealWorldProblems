@@ -25,6 +25,8 @@ tools:
     read-only: true
 
 safe-outputs:
+  staged: false
+  github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   update-issue:
     body: true
     max: 1

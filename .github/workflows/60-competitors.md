@@ -38,6 +38,8 @@ tools:
   web-fetch:
 
 safe-outputs:
+  staged: false
+  github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   update-issue:
     body: true
     max: 1
