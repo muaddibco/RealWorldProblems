@@ -117,20 +117,20 @@ Use this order; wrap around as needed:
 - If the output looks like a near-duplicate of an earlier theme output in the same run, regenerate.
 
 ## Safe outputs (MANDATORY)
-Use safeoutputs tools (tool calls). Do NOT output NDJSON/JSON lines.
+Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
 
-- For each issue to create, CALL `create_issue` with:
+- For each issue to create, CALL `safeoutputs-create_issue` with:
   - title: "Problem: ..."
-  - body: full template text
+  - body: full template text (JTBD, context/frequency, pain, workaround)
   - labels: include domain/<domain> and persona/<persona> when possible
 - Create between 1 and `${{ inputs.count }}` issues.
-- If you create 0 issues, CALL `noop` exactly once with a short reason.
+- If you create 0 issues for any reason, CALL `safeoutputs-noop` exactly once with a short reason.
+
+Create issues one-by-one: draft → immediately call `safeoutputs-create_issue`.
 
 Also:
 - Create issues one-by-one (create the issue immediately after drafting it).
 - Do not spend tokens drafting all issues before creating any.
-
-If you are unable to create issues for any reason (missing permissions/tools), CALL `noop` and explain the blocker.
 
 ## include_regulated handling
 - If include_regulated=false:
