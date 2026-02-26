@@ -121,14 +121,14 @@ Use this order; wrap around as needed:
 ## Safe outputs (MANDATORY)
 Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
 
-- For each issue to create, CALL `safeoutputs-create_issue` with:
+- For each issue to create, CALL `create_issue` with:
   - title: "Problem: ..."
   - body: full template text (JTBD, context/frequency, pain, workaround)
   - labels: include domain/<domain> and persona/<persona> when possible
 - Create between 1 and `${{ inputs.count }}` issues.
-- If you create 0 issues for any reason, CALL `safeoutputs-noop` exactly once with a short reason.
+- If you create 0 issues for any reason, CALL `noop` exactly once with a short reason.
 
-Create issues one-by-one: draft → immediately call `safeoutputs-create_issue`.
+Create issues one-by-one: draft → immediately call `create_issue`.
 
 Also:
 - Create issues one-by-one (create the issue immediately after drafting it).
