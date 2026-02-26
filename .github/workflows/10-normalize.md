@@ -1,6 +1,7 @@
 ---
 name: "RW: Normalize"
 on:
+  workflow_dispatch:
   issues:
     types: [opened, edited, labeled]
     lock-for-agent: true
