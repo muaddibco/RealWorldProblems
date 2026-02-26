@@ -1,7 +1,6 @@
 ---
 name: rw-wedge-filter
 description: Decides whether the proposed wedge is credible given competition and constraints; archives weak-wedge items with explicit reasons.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "wedge-filter"

@@ -63,6 +63,11 @@ safe-outputs:
 
 # Seed problems (diversity-rotated)
 
+Tooling note:
+- Search/read existing issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
+- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+
 Create `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md.
 Avoid obvious duplicates by searching existing "Problem:" issues before creating.
 

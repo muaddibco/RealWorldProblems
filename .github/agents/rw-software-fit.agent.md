@@ -1,7 +1,6 @@
 ---
 name: rw-software-fit
 description: Determines whether a problem is solvable primarily by software and documents the rationale; archives non-software problems.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "software-fit"

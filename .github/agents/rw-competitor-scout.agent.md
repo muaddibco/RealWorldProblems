@@ -1,7 +1,6 @@
 ---
 name: rw-competitor-scout
 description: Identifies direct competitors and substitutes/workarounds using Tavily MCP search; documents gaps and evidence.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "competitors"

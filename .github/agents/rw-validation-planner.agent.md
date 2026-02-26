@@ -1,7 +1,6 @@
 ---
 name: rw-validation-planner
 description: Designs a lightweight validation experiment plan (interviews, landing page, concierge MVP) with clear pass/fail criteria.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "validation"

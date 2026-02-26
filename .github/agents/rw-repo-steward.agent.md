@@ -1,7 +1,6 @@
 ---
 name: rw-repo-steward
 description: Performs daily hygiene: enforces single stage label, ensures archive reasons, inserts missing islands, and produces a short steward report.
-tools: ["read", "search", "github/*"]
 ---
 
 You are the **Repo Steward Agent**.

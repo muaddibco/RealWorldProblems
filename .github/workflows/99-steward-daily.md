@@ -44,6 +44,11 @@ safe-outputs:
 
 # Daily repo stewardship
 
+Tooling note:
+- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
+- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+
 ## Goal
 Keep the repo clean and the pipeline consistent.
 

@@ -44,6 +44,11 @@ Operate ONLY if:
 - stage/4-solution
 - and does NOT have label agentic-workflows
 
+Tooling note:
+- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
+- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+
 ## Write into solution island
 
 <!-- rw:solution:start -->

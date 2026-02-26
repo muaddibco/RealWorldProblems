@@ -47,6 +47,11 @@ Operate ONLY if:
 
 If software-fit is missing, add comment requesting it (or noop if not allowed) and stop.
 
+Tooling note:
+- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
+- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+
 ## Fill scorecard island
 Write into:
 

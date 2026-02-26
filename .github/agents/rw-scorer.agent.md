@@ -1,7 +1,6 @@
 ---
 name: rw-scorer
 description: Fills the 6-factor scorecard, applies score bucket and risk labels per AGENTS.md, and prepares the issue for solution drafting.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "scoring"

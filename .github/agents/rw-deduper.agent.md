@@ -1,7 +1,6 @@
 ---
 name: rw-deduper
 description: Detects duplicates and adds a lightweight cluster suggestion; advances stage or archives duplicates.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "dedupe"

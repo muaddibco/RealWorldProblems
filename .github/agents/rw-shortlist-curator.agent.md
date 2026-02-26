@@ -1,7 +1,6 @@
 ---
 name: rw-shortlist-curator
 description: Produces a daily Top-10 report based on scored, wedge-credible problems and recommends the next validation actions.
-tools: ["read", "search", "github/*"]
 metadata:
   pipeline: "realworldproblems"
   role: "top10-report"
