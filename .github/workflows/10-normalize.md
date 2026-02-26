@@ -1,41 +1,60 @@
 ---
+name: "RW: Normalize"
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled]
     lock-for-agent: true
+
 engine:
   id: copilot
   agent: rw-normalizer
+
 permissions:
   contents: read
-  issues: write
+  issues: read
+
+sandbox:
+  agent: awf
+
+network: {}
+
+tools:
+  github:
+    toolsets: [issues]
+    read-only: true
+
 safe-outputs:
   update-issue:
-    title:
-    body:
+    body: true
     max: 1
   add-comment:
     max: 1
   add-labels:
-    max: 5
+    blocked: ["~*", "*[bot]"]
+    max: 10
   remove-labels:
-    max: 5
+    blocked: ["~*"]
+    max: 10
+  noop:
 ---
 
 # Normalize Problem Issue
 
-Work only on issues that have label `type/problem` and `stage/0-intake`.
-If not applicable, emit noop.
+Operate ONLY if the issue has labels:
+- type/problem
+- stage/0-intake
 
-## If the issue is missing required info
-Post a comment listing exactly what’s missing and add label `status/needs-info`.
-Do NOT change the stage label.
+Otherwise emit noop.
 
-## If the issue is complete
-1) Rewrite the body to match `docs/templates/problem_body_template.md`.
-2) Use an island so reruns are safe:
+## If missing required info
+- Add a short comment listing exactly what’s missing.
+- Add label: status/needs-info
+- Do NOT change stage.
+
+## If complete
+1) Update the normalized island only:
    <!-- rw:normalized:start --> ... <!-- rw:normalized:end -->
-3) Add label `stage/1-normalized`
-4) Remove label `stage/0-intake`
+2) Add label: stage/1-normalized
+3) Remove label: stage/0-intake
 
 Always emit at least one safe output operation, or noop.

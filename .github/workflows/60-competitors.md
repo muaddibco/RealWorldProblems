@@ -18,23 +18,24 @@ sandbox:
   agent: awf
 
 network:
-  firewall: true
   allowed:
     - defaults
     - github
-    - "www.google.com"
-    - "www.bing.com"
-    - "www.producthunt.com"
-    - "www.g2.com"
-    - "www.capterra.com"
-# Network allowlist is required in strict mode; AWF enforces it. :contentReference[oaicite:9]{index=9}
+    - "*.tavily.com"
+
+mcp-servers:
+  tavily:
+    command: npx
+    args: ["-y", "@tavily/mcp-server"]
+    env:
+      TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
+    allowed: ["search", "search_news"]
 
 tools:
   github:
     toolsets: [issues]
     read-only: true
   web-fetch:
-  web-search:   # engine-dependent; if unavailable, mark “needs verification” :contentReference[oaicite:10]{index=10}
 
 safe-outputs:
   update-issue:
