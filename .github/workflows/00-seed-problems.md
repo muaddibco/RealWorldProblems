@@ -127,6 +127,8 @@ Create up to `${{ inputs.count }}` issues (at least 1 if possible).
 If you create zero issues, output exactly one noop line:
 {"type":"noop","message":"No issues created because <reason>"} 
 
+Generate issues one-by-one and emit the create_issue line immediately. Do not draft all issues first.
+
 ## include_regulated handling
 - If include_regulated=false:
   - Avoid problems that require handling medical diagnoses, financial account credentials, children’s personal data, or anything likely to require compliance-heavy workflows.
