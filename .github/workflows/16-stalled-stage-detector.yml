@@ -38,7 +38,7 @@ jobs:
       - name: Detect stale stage issues and optionally requeue
         uses: actions/github-script@v8
         env:
-          INPUT_DRY_RUN: ${{ inputs.dry_run || 'true' }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run || 'false' }}
           INPUT_STALE_HOURS: ${{ inputs.stale_hours || '8' }}
           INPUT_MAX_ISSUES: ${{ inputs.max_issues || '15' }}
           INPUT_STAGE_FILTER: ${{ inputs.stage_filter || '' }}
@@ -50,7 +50,7 @@ jobs:
             const repo = context.repo.repo;
 
             const isSchedule = context.eventName === 'schedule';
-            const dryRunInput = String(process.env.INPUT_DRY_RUN || 'true').toLowerCase() === 'true';
+            const dryRunInput = String(process.env.INPUT_DRY_RUN || 'false').toLowerCase() === 'true';
             const dryRun = isSchedule ? false : dryRunInput;
 
             const staleHours = Number.parseFloat(process.env.INPUT_STALE_HOURS || '8');
@@ -75,8 +75,52 @@ jobs:
 
             const stageLabelPattern = /^stage\/\d+-/;
             const ignoredLabel = 'agentic-workflows';
+            const experimentLabel = 'type/experiment';
             const thresholdMs = staleHours * 60 * 60 * 1000;
             const nowMs = Date.now();
+
+            async function hasExperimentSubIssue(issueNumber) {
+              let subPage = 1;
+              while (subPage <= 10) {
+                let response;
+                try {
+                  response = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                    owner,
+                    repo,
+                    issue_number: issueNumber,
+                    per_page: 100,
+                    page: subPage
+                  });
+                } catch (error) {
+                  if (error.status === 404 || error.status === 410 || error.status === 422) {
+                    return false;
+                  }
+                  throw error;
+                }
+
+                const subIssues = Array.isArray(response.data)
+                  ? response.data
+                  : Array.isArray(response.data?.sub_issues)
+                    ? response.data.sub_issues
+                    : [];
+
+                if (subIssues.length === 0) return false;
+
+                for (const subIssue of subIssues) {
+                  const labels = (subIssue.labels || [])
+                    .map((label) => typeof label === 'string' ? label : label?.name)
+                    .filter(Boolean);
+                  if (labels.includes(experimentLabel)) return true;
+                }
+
+                if (subIssues.length < 100) return false;
+                subPage += 1;
+              }
+
+              return false;
+            }
+
+            let skippedWithExperimentSubIssue = 0;
 
             const openProblems = [];
             let page = 1;
@@ -107,6 +151,11 @@ jobs:
               const stageLabel = stageLabels[0];
               if (stageLabel === 'stage/9-archived') continue;
               if (stageFilter && stageLabel !== stageFilter) continue;
+
+              if (await hasExperimentSubIssue(issue.number)) {
+                skippedWithExperimentSubIssue += 1;
+                continue;
+              }
 
               const issueUpdatedMs = new Date(issue.updated_at).getTime();
               if (!Number.isFinite(issueUpdatedMs) || (nowMs - issueUpdatedMs) < thresholdMs) continue;
@@ -174,6 +223,7 @@ jobs:
               `Mode: ${dryRun ? 'dry-run' : 'apply'}`,
               `Stale threshold: ${staleHours}h`,
               `Eligible stalled issues: ${candidates.length}`,
+              `Skipped (has sub-issue with ${experimentLabel}): ${skippedWithExperimentSubIssue}`,
               ''
             ];
 

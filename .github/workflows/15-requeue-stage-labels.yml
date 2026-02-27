@@ -55,6 +55,50 @@ jobs:
 
             const stageLabelPattern = /^stage\/\d+-/;
             const ignoredLabel = 'agentic-workflows';
+            const experimentLabel = 'type/experiment';
+
+            async function hasExperimentSubIssue(issueNumber) {
+              let subPage = 1;
+              while (subPage <= 10) {
+                let response;
+                try {
+                  response = await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                    owner,
+                    repo,
+                    issue_number: issueNumber,
+                    per_page: 100,
+                    page: subPage
+                  });
+                } catch (error) {
+                  if (error.status === 404 || error.status === 410 || error.status === 422) {
+                    return false;
+                  }
+                  throw error;
+                }
+
+                const subIssues = Array.isArray(response.data)
+                  ? response.data
+                  : Array.isArray(response.data?.sub_issues)
+                    ? response.data.sub_issues
+                    : [];
+
+                if (subIssues.length === 0) return false;
+
+                for (const subIssue of subIssues) {
+                  const labels = (subIssue.labels || [])
+                    .map((label) => typeof label === 'string' ? label : label?.name)
+                    .filter(Boolean);
+                  if (labels.includes(experimentLabel)) return true;
+                }
+
+                if (subIssues.length < 100) return false;
+                subPage += 1;
+              }
+
+              return false;
+            }
+
+            let skippedWithExperimentSubIssue = 0;
 
             const candidates = [];
             let page = 1;
@@ -81,6 +125,11 @@ jobs:
                 const stageLabel = stageLabels[0];
                 if (stageLabel === 'stage/9-archived') continue;
                 if (stageFilter && stageLabel !== stageFilter) continue;
+
+                if (await hasExperimentSubIssue(issue.number)) {
+                  skippedWithExperimentSubIssue += 1;
+                  continue;
+                }
 
                 candidates.push({ number: issue.number, title: issue.title, stageLabel });
                 if (candidates.length >= maxIssues) break;
@@ -123,6 +172,7 @@ jobs:
             const lines = [
               `Mode: ${dryRun ? 'dry-run' : 'apply'}`,
               `Eligible issues: ${candidates.length}`,
+              `Skipped (has sub-issue with ${experimentLabel}): ${skippedWithExperimentSubIssue}`,
               ''
             ];
 
