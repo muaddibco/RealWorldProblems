@@ -59,15 +59,17 @@ Tooling note:
 
 ## Tasks
 
-1) Search for likely duplicates among open issues:
+1) Search for likely duplicates among both open and closed issues:
    - similar titles ("Problem: ...")
    - similar JTBD lines
+  - prefer the best canonical match even if it is already closed (include status in notes)
 
 2) If this issue is a duplicate:
-   - Add comment: "Duplicate of #<id> (reason: ...)"
+  - Add comment: "Duplicate of #<id> (reason: ..., target status: open|closed)"
    - Add labels: status/duplicate, stage/9-archived, archive/other (or archive/low-pain etc. if appropriate)
    - Remove label: stage/1-normalized
    - Close issue with state-reason "duplicate" if supported; otherwise just label archived.
+  - Do not skip dedupe classification just because the canonical issue is closed.
 
 3) If NOT a duplicate:
    - Write a short summary into the Dedupe island using update-issue + replace-island semantics:

@@ -1,5 +1,6 @@
 This is just a file with useful commands
 
+gh extension install github/gh-aw
 gh aw compile
 
 gh aw audit ###
