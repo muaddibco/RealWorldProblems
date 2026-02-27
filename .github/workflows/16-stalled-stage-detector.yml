@@ -8,20 +8,20 @@ on:
         required: true
         default: true
         type: boolean
-      stale_hours:
-        description: "Minimum hours since stage label was applied"
+      stale_minutes:
+        description: "Minimum minutes since stage label was applied"
         required: true
-        default: "8"
+        default: "15"
       max_issues:
         description: "Max stalled issues to requeue"
         required: true
-        default: "15"
+        default: "25"
       stage_filter:
         description: "Optional exact stage label (e.g. stage/3-scored)"
         required: false
         default: ""
-  # schedule:
-  #   - cron: "41 */3 * * *"
+  schedule:
+    - cron: "0 * * * *"
 
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           INPUT_DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          INPUT_STALE_HOURS: ${{ inputs.stale_hours || '8' }}
+          INPUT_STALE_MINUTES: ${{ inputs.stale_minutes || '15' }}
           INPUT_MAX_ISSUES: ${{ inputs.max_issues || '15' }}
           INPUT_STAGE_FILTER: ${{ inputs.stage_filter || '' }}
           SAFEOUTPUTS_TOKEN_PRESENT: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN != '' }}
@@ -53,13 +53,13 @@ jobs:
             const dryRunInput = String(process.env.INPUT_DRY_RUN || 'false').toLowerCase() === 'true';
             const dryRun = isSchedule ? false : dryRunInput;
 
-            const staleHours = Number.parseFloat(process.env.INPUT_STALE_HOURS || '8');
+            const staleMinutes = Number.parseFloat(process.env.INPUT_STALE_MINUTES || '15');
             const maxIssues = Number.parseInt(process.env.INPUT_MAX_ISSUES || '15', 10);
             const stageFilter = (process.env.INPUT_STAGE_FILTER || '').trim();
             const safeTokenPresent = String(process.env.SAFEOUTPUTS_TOKEN_PRESENT).toLowerCase() === 'true';
 
-            if (!Number.isFinite(staleHours) || staleHours <= 0) {
-              core.setFailed('stale_hours must be a positive number.');
+            if (!Number.isFinite(staleMinutes) || staleMinutes <= 0) {
+              core.setFailed('stale_minutes must be a positive number.');
               return;
             }
 
@@ -76,7 +76,7 @@ jobs:
             const stageLabelPattern = /^stage\/\d+-/;
             const ignoredLabel = 'agentic-workflows';
             const experimentLabel = 'type/experiment';
-            const thresholdMs = staleHours * 60 * 60 * 1000;
+            const thresholdMs = staleMinutes * 60 * 1000;
             const nowMs = Date.now();
 
             async function hasExperimentSubIssue(issueNumber) {
@@ -221,7 +221,7 @@ jobs:
             const lines = [
               `Event: ${context.eventName}`,
               `Mode: ${dryRun ? 'dry-run' : 'apply'}`,
-              `Stale threshold: ${staleHours}h`,
+              `Stale threshold: ${staleMinutes}m`,
               `Eligible stalled issues: ${candidates.length}`,
               `Skipped (has sub-issue with ${experimentLabel}): ${skippedWithExperimentSubIssue}`,
               ''
