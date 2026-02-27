@@ -22,6 +22,7 @@ network:
     - defaults
     - github
     - "*.tavily.com"
+    - "*"
 
 mcp-servers:
   tavily:
