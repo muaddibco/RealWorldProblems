@@ -22,10 +22,13 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"ebf2fdf2e4d65b28b53e8dcd74724c2efd1dcdea088448f348621d2816d23c69","compiler_version":"v0.50.6"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"d685580a255bc0366d0ac307ba36d13d13e266d78e09eef507a8c1a0810f56d0","compiler_version":"v0.50.6"}
 
 name: "RW: Seed Problems"
 "on":
+  schedule:
+  - cron: "16 */4 * * *"
+    # Friendly format: every 4h (scattered)
   workflow_dispatch:
     inputs:
       count:
@@ -241,6 +244,8 @@ jobs:
     permissions:
       contents: read
       issues: read
+    concurrency:
+      group: "gh-aw-copilot-${{ github.workflow }}"
     env:
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       GH_AW_ASSETS_ALLOWED_EXTS: ""

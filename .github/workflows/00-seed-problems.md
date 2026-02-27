@@ -1,6 +1,7 @@
 ---
 name: "RW: Seed Problems"
 on:
+  schedule: every 4h
   workflow_dispatch:
     inputs:
       count:
@@ -70,6 +71,10 @@ Tooling note:
 
 Create `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md.
 Avoid obvious duplicates by searching existing "Problem:" issues before creating.
+
+Before creating issues, check how many open issues currently have label `type/problem`.
+- If count is **500 or more**, create nothing, CALL `noop` exactly once, and stop.
+- If count is below 500, proceed normally.
 
 If a generated problem is too similar to an existing issue, skip it and generate another.
 
