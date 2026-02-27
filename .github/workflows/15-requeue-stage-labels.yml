@@ -1,0 +1,137 @@
+name: "RW: Requeue Stage Labels"
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no label changes)"
+        required: true
+        default: true
+        type: boolean
+      max_issues:
+        description: "Max issues to requeue"
+        required: true
+        default: "25"
+      stage_filter:
+        description: "Optional exact stage label (e.g. stage/0-intake)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "17 */4 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: rw-requeue-stage-labels
+  cancel-in-progress: false
+
+jobs:
+  requeue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requeue eligible issues by toggling current stage label
+        uses: actions/github-script@v8
+        env:
+          INPUT_DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          INPUT_MAX_ISSUES: ${{ inputs.max_issues || '25' }}
+          INPUT_STAGE_FILTER: ${{ inputs.stage_filter || '' }}
+          SAFEOUTPUTS_TOKEN_PRESENT: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN != '' }}
+        with:
+          github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const dryRun = String(process.env.INPUT_DRY_RUN).toLowerCase() === 'true';
+            const maxIssues = Number.parseInt(process.env.INPUT_MAX_ISSUES || '25', 10);
+            const stageFilter = (process.env.INPUT_STAGE_FILTER || '').trim();
+            const safeTokenPresent = String(process.env.SAFEOUTPUTS_TOKEN_PRESENT).toLowerCase() === 'true';
+
+            if (!dryRun && !safeTokenPresent) {
+              core.setFailed('SAFEOUTPUTS_GITHUB_TOKEN is required for non-dry-run mode to reliably trigger downstream workflows.');
+              return;
+            }
+
+            const stageLabelPattern = /^stage\/\d+-/;
+            const ignoredLabel = 'agentic-workflows';
+
+            const candidates = [];
+            let page = 1;
+            while (page <= 10) {
+              const response = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                labels: 'type/problem',
+                per_page: 100,
+                page
+              });
+
+              const issues = response.data.filter((item) => !item.pull_request);
+              if (issues.length === 0) break;
+
+              for (const issue of issues) {
+                const labels = issue.labels.map((l) => typeof l === 'string' ? l : l.name).filter(Boolean);
+                if (labels.includes(ignoredLabel)) continue;
+
+                const stageLabels = labels.filter((label) => stageLabelPattern.test(label));
+                if (stageLabels.length !== 1) continue;
+
+                const stageLabel = stageLabels[0];
+                if (stageLabel === 'stage/9-archived') continue;
+                if (stageFilter && stageLabel !== stageFilter) continue;
+
+                candidates.push({ number: issue.number, title: issue.title, stageLabel });
+                if (candidates.length >= maxIssues) break;
+              }
+
+              if (candidates.length >= maxIssues) break;
+              page += 1;
+            }
+
+            core.info(`Found ${candidates.length} eligible issue(s). dry_run=${dryRun}`);
+
+            const results = [];
+            for (const item of candidates) {
+              if (dryRun) {
+                results.push({ ...item, status: 'preview' });
+                continue;
+              }
+
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: item.number,
+                  name: item.stageLabel
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: item.number,
+                labels: [item.stageLabel]
+              });
+
+              results.push({ ...item, status: 'requeued' });
+            }
+
+            const lines = [
+              `Mode: ${dryRun ? 'dry-run' : 'apply'}`,
+              `Eligible issues: ${candidates.length}`,
+              ''
+            ];
+
+            if (results.length === 0) {
+              lines.push('No issues matched current filters.');
+            } else {
+              for (const row of results) {
+                lines.push(`- #${row.number} [${row.stageLabel}] ${row.status} :: ${row.title}`);
+              }
+            }
+
+            core.summary.addHeading('RW Requeue Stage Labels').addCodeBlock(lines.join('\n')).write();
