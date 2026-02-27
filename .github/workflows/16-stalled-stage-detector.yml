@@ -11,7 +11,7 @@ on:
       stale_minutes:
         description: "Minimum minutes since stage label was applied"
         required: true
-        default: "15"
+        default: "30"
       max_issues:
         description: "Max stalled issues to requeue"
         required: true
