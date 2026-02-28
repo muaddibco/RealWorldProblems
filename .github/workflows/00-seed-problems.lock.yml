@@ -22,7 +22,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"d685580a255bc0366d0ac307ba36d13d13e266d78e09eef507a8c1a0810f56d0","compiler_version":"v0.50.7"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"d13441590aa723753e9b4ef56f12a6856946d1a7305e48744ca1c7a612c49eea","compiler_version":"v0.50.7"}
 
 name: "RW: Seed Problems"
 "on":
@@ -44,7 +44,7 @@ name: "RW: Seed Problems"
         description: If mode=persona_focus, use e.g. consumer | employee | smb-owner
         required: false
       include_regulated:
-        default: "false"
+        default: "true"
         description: Allow regulated-ish problems (health/finance/kids) in output
         options:
         - "false"

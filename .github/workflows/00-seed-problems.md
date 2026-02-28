@@ -28,7 +28,7 @@ on:
       include_regulated:
         description: "Allow regulated-ish problems (health/finance/kids) in output"
         required: true
-        default: "false"
+        default: "true"
         type: choice
         options:
           - "false"
