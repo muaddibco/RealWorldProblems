@@ -69,7 +69,14 @@ Tooling note:
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
 
-Create `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md.
+Create `target_count` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md.
+
+Set `target_count` as follows:
+- If workflow input `count` is available and numeric, use it.
+- Otherwise use `25`.
+- Never assume `5` by default.
+
+Create exactly `target_count` issues unless blocked by duplicate-avoidance rules or the 500-open-problems guardrail.
 Avoid obvious duplicates by searching existing "Problem:" issues before creating.
 
 Before creating issues, check how many open issues currently have label `type/problem`.
@@ -135,7 +142,7 @@ Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
   - title: "Problem: ..."
   - body: full template text (JTBD, context/frequency, pain, workaround)
   - labels: include domain/<domain> and persona/<persona> when possible
-- Create between 1 and `${{ inputs.count }}` issues.
+- Create between 1 and `target_count` issues.
 - If you create 0 issues for any reason, CALL `noop` exactly once with a short reason.
 
 Create issues one-by-one: draft → immediately call `create_issue`.
