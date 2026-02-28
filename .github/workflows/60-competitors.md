@@ -29,7 +29,7 @@ mcp-servers:
     args: ["-y", "tavily-mcp"]
     env:
       TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
-    allowed: ["search", "search_news"]
+    allowed: ["tavily_search", "tavily_research", "tavily_extract"]
 
 tools:
   github:
@@ -63,7 +63,7 @@ Tooling note:
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
 
-Use Tavily MCP as the primary web research source (`tavily.search`, `tavily.search_news`).
+Use Tavily MCP as the primary web research source (`tavily_search`, optionally `tavily_research`).
 Do not use direct `web-fetch` for arbitrary domains in this workflow because firewall allowlists may block it.
 If Tavily tools are unavailable at runtime, still produce a best-effort list and clearly mark “Needs verification”.
 

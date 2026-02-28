@@ -22,7 +22,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"d67eb87db0249edcc3467cc86600c85157dd65465cc6f52e9edfa8f630123a9a","compiler_version":"v0.50.7"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"7e5f997dcc938ed733a27a7e27e3cc577d9f5d64b9f88f1b37c197c30e1cdade","compiler_version":"v0.50.7"}
 
 name: "RW: Competitor Scan"
 "on":
@@ -800,8 +800,9 @@ jobs:
                   "tavily-mcp"
                 ],
                 "tools": [
-                  "search",
-                  "search_news"
+                  "tavily_search",
+                  "tavily_research",
+                  "tavily_extract"
                 ],
                 "env": {
                   "TAVILY_API_KEY": "\${TAVILY_API_KEY}"
