@@ -22,7 +22,6 @@ network:
     - defaults
     - github
     - "*.tavily.com"
-    - "*"
 
 mcp-servers:
   tavily:
@@ -36,7 +35,6 @@ tools:
   github:
     toolsets: [issues]
     read-only: true
-  web-fetch:
 
 safe-outputs:
   staged: false
@@ -65,7 +63,9 @@ Tooling note:
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
 
-If web-search/web-fetch are missing, still produce a best-effort list and clearly mark “Needs verification”.
+Use Tavily MCP as the primary web research source (`tavily.search`, `tavily.search_news`).
+Do not use direct `web-fetch` for arbitrary domains in this workflow because firewall allowlists may block it.
+If Tavily tools are unavailable at runtime, still produce a best-effort list and clearly mark “Needs verification”.
 
 ## Write into competitors island
 
