@@ -2,6 +2,7 @@
 name: "RW: Startup Selector"
 on:
   schedule: weekly
+  workflow_dispatch:
 
 engine:
   id: copilot
