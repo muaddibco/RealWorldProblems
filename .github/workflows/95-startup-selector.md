@@ -48,17 +48,18 @@ Find `type/problem` issues that are:
 
 Rank them by these four startup-selection criteria:
 1. **Frequency of use** — how often will users engage (higher is better)
-2. **Low market crowding** — competitors are few or clearly differentiated
+2. **Low market crowding** — competitors are few or clearly differentiated. The better the situation with competitors, the higher the score.
 3. **Implementation simplicity** — MVP achievable in weeks, not months. The easier the development, the higher the score.
-4. **Viral promotion potential** — natural sharing loops or referral mechanics
+4. **Viral promotion potential** — natural sharing loops or referral mechanics. The easier it is to advertise or distribute an application or portal, the higher the score.
 
 ## Output
 
 Create one `[ranking] <YYYY-MM-DD>` report issue containing:
 1. A scorecard for **every** matching issue using all four criteria (1–5 each).
-2. A final markdown table ordered from highest total score to lowest.
-3. The **Top 30** issues from that ranking (or all issues if fewer than 30 match).
-4. Issue links, per-criterion scores, total score, and a short rationale per issue explaining why it was given that particular rating.
+2. Only issues having all scores of 3 or higher should be included.
+3. A final markdown table ordered from highest total score to lowest.
+4. The **Top 30** issues from that ranking (or all issues if fewer than 30 match).
+5. Issue links, per-criterion scores, total score, and a short rationale per issue explaining why it was given that particular rating.
 
 Do **not** update any problem issue body.
 Do **not** add or remove any labels.
