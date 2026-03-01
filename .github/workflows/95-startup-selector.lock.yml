@@ -22,7 +22,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"fd7ab03af9f0dc9be375c05c764639a3bf2d046b10ee0f775e4f5a5634e0647b","compiler_version":"v0.50.7"}
+# gh-aw-metadata: {"schema_version":"v1","frontmatter_hash":"851b4a5f4fa8bcafdc949c10fba477e224879abf8c990df5b35b7b7286eca479","compiler_version":"v0.50.7"}
 
 name: "RW: Startup Selector"
 "on":
@@ -107,7 +107,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: create_issue, update_issue, add_labels, remove_labels, missing_tool, missing_data, noop
+          Tools: create_issue, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -333,12 +333,12 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_labels":{"blocked":["~*","*[bot]"],"max":5,"target":"*"},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1},"remove_labels":{"max":5},"update_issue":{"max":1}}
+          {"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
           cat > /opt/gh-aw/safeoutputs/tools.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_EOF'
           [
             {
-              "description": "Create a new GitHub issue for tracking bugs, feature requests, or tasks. Use this for actionable work items that need assignment, labeling, and status tracking. For reports, announcements, or status updates that don't require task tracking, use create_discussion instead. CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[selected] \". Labels [type/report] will be automatically added.",
+              "description": "Create a new GitHub issue for tracking bugs, feature requests, or tasks. Use this for actionable work items that need assignment, labeling, and status tracking. For reports, announcements, or status updates that don't require task tracking, use create_discussion instead. CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[ranking] \". Labels [type/report] will be automatically added.",
               "inputSchema": {
                 "additionalProperties": false,
                 "properties": {
@@ -377,115 +377,6 @@ jobs:
                 "type": "object"
               },
               "name": "create_issue"
-            },
-            {
-              "description": "Add labels to an existing GitHub issue or pull request for categorization and filtering. Labels must already exist in the repository. For creating new issues with labels, use create_issue with the labels property instead. CONSTRAINTS: Maximum 5 label(s) can be added. Target: *.",
-              "inputSchema": {
-                "additionalProperties": false,
-                "properties": {
-                  "item_number": {
-                    "description": "Issue or PR number to add labels to. This is the numeric ID from the GitHub URL (e.g., 456 in github.com/owner/repo/issues/456). If omitted, adds labels to the issue or PR that triggered this workflow. Only works for issue or pull_request event triggers. For schedule, workflow_dispatch, or other triggers, item_number is required — omitting it will silently skip the label operation.",
-                    "type": "number"
-                  },
-                  "labels": {
-                    "description": "Label names to add (e.g., ['bug', 'priority-high']). Labels must exist in the repository.",
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  }
-                },
-                "type": "object"
-              },
-              "name": "add_labels"
-            },
-            {
-              "description": "Remove labels from an existing GitHub issue or pull request. Silently skips labels that don't exist on the item. Use this to clean up labels or manage label lifecycles (e.g., removing 'needs-review' after review is complete). CONSTRAINTS: Maximum 5 label(s) can be removed. Target: *.",
-              "inputSchema": {
-                "additionalProperties": false,
-                "properties": {
-                  "item_number": {
-                    "description": "Issue or PR number to remove labels from. This is the numeric ID from the GitHub URL (e.g., 456 in github.com/owner/repo/issues/456). If omitted, removes labels from the item that triggered this workflow.",
-                    "type": "number"
-                  },
-                  "labels": {
-                    "description": "Label names to remove (e.g., ['smoke', 'needs-triage']). Non-existent labels are silently skipped.",
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "labels"
-                ],
-                "type": "object"
-              },
-              "name": "remove_labels"
-            },
-            {
-              "description": "Update an existing GitHub issue's title, body, labels, assignees, or milestone WITHOUT closing it. This tool is primarily for editing issue metadata and content. While it supports changing status between 'open' and 'closed', use close_issue instead when you want to close an issue with a closing comment. Body updates support replacing, appending to, prepending content, or updating a per-run \"island\" section. CONSTRAINTS: Maximum 1 issue(s) can be updated. Target: *. Body updates are allowed.",
-              "inputSchema": {
-                "additionalProperties": false,
-                "properties": {
-                  "assignees": {
-                    "description": "Replace the issue assignees with this list of GitHub usernames (e.g., ['octocat', 'mona']).",
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "body": {
-                    "description": "Issue body content in Markdown. For 'replace', this becomes the entire body. For 'append'/'prepend', this content is added with a separator and an attribution footer. For 'replace-island', only the run-specific section is updated.",
-                    "type": "string"
-                  },
-                  "issue_number": {
-                    "description": "Issue number to update. This is the numeric ID from the GitHub URL (e.g., 789 in github.com/owner/repo/issues/789). Required when the workflow target is '*' (any issue).",
-                    "type": [
-                      "number",
-                      "string"
-                    ]
-                  },
-                  "labels": {
-                    "description": "Replace the issue labels with this list (e.g., ['bug', 'tracking:foo']). Labels must exist in the repository.",
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "milestone": {
-                    "description": "Milestone number to assign (e.g., 1). Use null to clear.",
-                    "type": [
-                      "number",
-                      "string"
-                    ]
-                  },
-                  "operation": {
-                    "description": "How to update the issue body: 'append' (default - add to end with separator), 'prepend' (add to start with separator), 'replace' (overwrite entire body), or 'replace-island' (update a run-specific section).",
-                    "enum": [
-                      "replace",
-                      "append",
-                      "prepend",
-                      "replace-island"
-                    ],
-                    "type": "string"
-                  },
-                  "status": {
-                    "description": "New issue status: 'open' to reopen a closed issue, 'closed' to close an open issue.",
-                    "enum": [
-                      "open",
-                      "closed"
-                    ],
-                    "type": "string"
-                  },
-                  "title": {
-                    "description": "New issue title to replace the existing title.",
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "name": "update_issue"
             },
             {
               "description": "Report that a tool or capability needed to complete the task is not available, or share any information you deem important about missing functionality or limitations. Use this when you cannot accomplish what was requested because the required functionality is missing or access is restricted.",
@@ -560,25 +451,6 @@ jobs:
           GH_AW_SAFE_OUTPUTS_TOOLS_EOF
           cat > /opt/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_EOF'
           {
-            "add_labels": {
-              "defaultMax": 5,
-              "fields": {
-                "item_number": {
-                  "issueOrPRNumber": true
-                },
-                "labels": {
-                  "required": true,
-                  "type": "array",
-                  "itemType": "string",
-                  "itemSanitize": true,
-                  "itemMaxLength": 128
-                },
-                "repo": {
-                  "type": "string",
-                  "maxLength": 256
-                }
-              }
-            },
             "create_issue": {
               "defaultMax": 1,
               "fields": {
@@ -668,79 +540,6 @@ jobs:
                   "maxLength": 65000
                 }
               }
-            },
-            "remove_labels": {
-              "defaultMax": 5,
-              "fields": {
-                "item_number": {
-                  "issueOrPRNumber": true
-                },
-                "labels": {
-                  "required": true,
-                  "type": "array",
-                  "itemType": "string",
-                  "itemSanitize": true,
-                  "itemMaxLength": 128
-                },
-                "repo": {
-                  "type": "string",
-                  "maxLength": 256
-                }
-              }
-            },
-            "update_issue": {
-              "defaultMax": 1,
-              "fields": {
-                "assignees": {
-                  "type": "array",
-                  "itemType": "string",
-                  "itemSanitize": true,
-                  "itemMaxLength": 39
-                },
-                "body": {
-                  "type": "string",
-                  "sanitize": true,
-                  "maxLength": 65000
-                },
-                "issue_number": {
-                  "issueOrPRNumber": true
-                },
-                "labels": {
-                  "type": "array",
-                  "itemType": "string",
-                  "itemSanitize": true,
-                  "itemMaxLength": 128
-                },
-                "milestone": {
-                  "optionalPositiveInteger": true
-                },
-                "operation": {
-                  "type": "string",
-                  "enum": [
-                    "replace",
-                    "append",
-                    "prepend",
-                    "replace-island"
-                  ]
-                },
-                "repo": {
-                  "type": "string",
-                  "maxLength": 256
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "open",
-                    "closed"
-                  ]
-                },
-                "title": {
-                  "type": "string",
-                  "sanitize": true,
-                  "maxLength": 128
-                }
-              },
-              "customValidation": "requiresOneOf:status,title,body"
             }
           }
           GH_AW_SAFE_OUTPUTS_VALIDATION_EOF
@@ -1141,7 +940,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      pull-requests: write
     outputs:
       noop_message: ${{ steps.noop.outputs.noop_message }}
       tools_reported: ${{ steps.missing_tool.outputs.tools_reported }}
@@ -1233,7 +1031,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      pull-requests: write
     timeout-minutes: 15
     env:
       GH_AW_ENGINE_ID: "copilot"
@@ -1270,7 +1067,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,github.com,host.docker.internal,raw.githubusercontent.com,registry.npmjs.org,telemetry.enterprise.githubcopilot.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":5,\"target\":\"*\"},\"create_issue\":{\"labels\":[\"type/report\"],\"max\":1,\"title_prefix\":\"[selected] \"},\"missing_data\":{},\"missing_tool\":{},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":5,\"target\":\"*\"},\"update_issue\":{\"allow_body\":true,\"max\":1,\"target\":\"*\"}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_issue\":{\"labels\":[\"type/report\"],\"max\":1,\"title_prefix\":\"[ranking] \"},\"missing_data\":{},\"missing_tool\":{}}"
         with:
           github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
           script: |

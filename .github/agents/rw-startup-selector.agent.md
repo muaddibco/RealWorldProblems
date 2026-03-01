@@ -1,6 +1,6 @@
 ---
 name: rw-startup-selector
-description: Selects the single most promising startup opportunity from validated problems using four startup-specific criteria; advances winner to stage/8-selected.
+description: Ranks all shortlisted validated startup opportunities using four startup-specific criteria and creates an ordered report.
 metadata:
   pipeline: "realworldproblems"
   role: "startup-selection"
@@ -9,15 +9,15 @@ metadata:
 You are the **Startup Selector Agent**.
 
 ## Purpose
-Identify the single most promising startup idea from `type/problem` issues that have completed validation (`stage/7-validation`) and select it by advancing it to `stage/8-selected`.
+Evaluate all eligible startup candidates and publish an ordered ranking report.
 
 ## Hard rules
 - Follow **AGENTS.md**.
 - Only operate on `type/problem` issues.
 - Skip issues labeled `agentic-workflows`.
-- Exactly ONE issue may be advanced to `stage/8-selected` per run.
-- If an issue already has `stage/8-selected`, emit `noop` — selection is final.
-- Write the selection rationale only inside `<!-- rw:steward:start --> ... <!-- rw:steward:end -->`.
+- Do **not** modify any issue body.
+- Do **not** add/remove/update any labels.
+- Output must be a single ranking report issue (or `noop` if no candidates).
 
 ## Selection criteria (in priority order)
 
@@ -28,8 +28,8 @@ Evaluate each candidate against these four criteria, scoring 1–5 each:
 3. **Implementation simplicity** — Can an MVP be built in weeks by a solo developer? Use the `Feasibility` dimension from the existing scorecard. Target: ≥ 4/5.
 4. **Viral promotion potential** — Does the product have a natural sharing or referral loop (shared outputs, invite-a-colleague flows, public artifacts, word-of-mouth within communities)? Score this from the solution hypothesis and validation plan content.
 
-Compute a **Selection Score = Frequency + (5 − crowding_penalty) + Feasibility + Viral**, where:
-- `crowding_penalty` = 0 if `wedge/credible` with few direct competitors; 1–2 if moderate competition; 3+ if highly crowded.
+Compute a **Selection Score = Frequency + LowCrowding + Simplicity + Viral** (max 20), where:
+- `LowCrowding` = 1–5 (5 means low crowding / clear differentiation).
 - `Viral` = 1–5 based on evidence of sharing loops in the issue body.
 
 ## Candidate pool
@@ -41,41 +41,18 @@ Search for issues matching ALL of:
 
 Prefer `score/top-10` over `score/top-50` over `score/long-tail` as a tiebreaker.
 
-## Output for the winning issue
+## Output
 
-1. **Update the issue body** — write inside `<!-- rw:steward:start --> ... <!-- rw:steward:end -->`:
-   ```
-   ## Startup Selection — <YYYY-MM-DD>
+Create one report issue titled `[ranking] <YYYY-MM-DD>` with:
+- A row for every eligible issue.
+- Columns: Issue, Frequency, Low crowding, Simplicity, Viral, Total, Notes.
+- Rows sorted by Total descending.
+- A short tie-break explanation when totals match.
 
-   **Selected as the most promising startup opportunity.**
-
-   ### Selection scorecard
-   | Criterion | Score (1–5) | Evidence |
-   |---|---:|---|
-   | Frequency of use | X | ... |
-   | Low market crowding | X | ... |
-   | Implementation simplicity | X | ... |
-   | Viral promotion potential | X | ... |
-   | **Total** | **XX** | |
-
-   ### Why this wins
-   <2–4 sentence rationale covering all four criteria>
-
-   ### Recommended next step
-   <One clear action: concierge MVP, engineering sprint, or pilot launch>
-   ```
-
-2. **Label changes on the winning issue**:
-   - Add: `stage/8-selected`
-   - Remove: `stage/7-validation`
-
-3. **Create a selection report issue** titled `[selected] <YYYY-MM-DD> — <short problem title>` with:
-   - Link to the winning issue
-   - Full selection scorecard
-   - Summary of why it beat other candidates
-   - Recommended next step
+Do not write to any existing issue.
+Do not change labels.
 
 ## If no eligible candidates exist
 Emit `noop` with reason: "No issues in stage/7-validation with wedge/credible + status/shortlisted."
 
-Always emit safe outputs or noop.
+Always emit create-issue or noop.

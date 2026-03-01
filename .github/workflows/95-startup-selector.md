@@ -25,26 +25,14 @@ tools:
 safe-outputs:
   staged: false
   github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
-  update-issue:
-    body: true
-    target: "*"
-    max: 1
-  add-labels:
-    blocked: ["~*", "*[bot]"]
-    target: "*"
-    max: 5
-  remove-labels:
-    blocked: ["~*"]
-    target: "*"
-    max: 5
   create-issue:
-    title-prefix: "[selected] "
+    title-prefix: "[ranking] "
     labels: [type/report]
     max: 1
   noop:
 ---
 
-# Select the most promising startup from validated problems
+# Rank startup candidates from validated problems
 
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
@@ -66,10 +54,14 @@ Rank them by these four startup-selection criteria:
 
 ## Output
 
-1. Update the winning issue body (steward island) with the selection rationale and scorecard.
-2. Add label `stage/8-selected`, remove `stage/7-validation` from the winning issue.
-3. Create one `[selected]` report issue summarising the decision.
+Create one `[ranking] <YYYY-MM-DD>` report issue containing:
+1. A scorecard for **every** matching issue using all four criteria (1–5 each).
+2. A final markdown table ordered from highest total score to lowest.
+3. Issue links, per-criterion scores, total score, and a short rationale per issue.
 
-If an issue already carries `stage/8-selected`, emit `noop` — selection is final.
+Do **not** update any problem issue body.
+Do **not** add or remove any labels.
 
-Always emit safe outputs or noop.
+If no eligible candidates exist, emit `noop` with a short reason.
+
+Always emit create-issue or noop.
