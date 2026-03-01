@@ -44,9 +44,10 @@ Prefer `score/top-10` over `score/top-50` over `score/long-tail` as a tiebreaker
 ## Output
 
 Create one report issue titled `[ranking] <YYYY-MM-DD>` with:
-- A row for every eligible issue.
+- A complete internal scorecard for every eligible issue.
 - Columns: Issue, Frequency, Low crowding, Simplicity, Viral, Total, Notes.
 - Rows sorted by Total descending.
+- Include only the Top 30 rows in the final published table (or all rows if fewer than 30 eligible issues).
 - A short tie-break explanation when totals match.
 
 Do not write to any existing issue.

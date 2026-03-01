@@ -57,7 +57,8 @@ Rank them by these four startup-selection criteria:
 Create one `[ranking] <YYYY-MM-DD>` report issue containing:
 1. A scorecard for **every** matching issue using all four criteria (1–5 each).
 2. A final markdown table ordered from highest total score to lowest.
-3. Issue links, per-criterion scores, total score, and a short rationale per issue explaining why it was given that particular rating.
+3. The **Top 30** issues from that ranking (or all issues if fewer than 30 match).
+4. Issue links, per-criterion scores, total score, and a short rationale per issue explaining why it was given that particular rating.
 
 Do **not** update any problem issue body.
 Do **not** add or remove any labels.
