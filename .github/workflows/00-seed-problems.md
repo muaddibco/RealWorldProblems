@@ -79,6 +79,13 @@ Set `target_count` as follows:
 Create exactly `target_count` issues unless blocked by duplicate-avoidance rules or the 500-open-problems guardrail.
 Avoid obvious duplicates by searching existing "Problem:" issues before creating.
 
+Before choosing topics, run a **coverage scan** over open issues labeled `stage/7-validation`:
+- Read all open `type/problem` + `stage/7-validation` issues.
+- Cluster them into covered topic areas by similarity of core problem/JTBD.
+- Build a short internal list of "already covered" topic clusters.
+- Prefer generating seeds in under-covered areas.
+- Avoid proposing topics that are materially similar to those stage/7 clusters unless a clearly different persona/context/wedge is evident.
+
 Before creating issues, check how many open issues currently have label `type/problem`.
 - If count is **500 or more**, create nothing, CALL `noop` exactly once, and stop.
 - If count is below 500, proceed normally.
@@ -333,5 +340,6 @@ For each generated item i:
 Before creating an issue:
 - Search existing issues for 3–6 key phrases from:
   - persona + theme + core verb (“refund tracking”, “renewal reminder”, “returns deadline”)
+- Also compare against topic clusters from open `stage/7-validation` issues and avoid near-overlap.
 - If an existing issue matches the same persona+theme+JTBD structure:
   - Skip and generate a different problem for that slot.
