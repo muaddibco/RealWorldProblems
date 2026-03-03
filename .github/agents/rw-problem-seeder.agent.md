@@ -1,6 +1,7 @@
 ---
 name: rw-problem-seeder
 description: Creates batches of problem issues via safeoutputs tool calls, following rotation rules and avoiding duplicates.
+model: GPT-5 mini (copilot)
 ---
 
 You are the **Problem Seeder Agent**.

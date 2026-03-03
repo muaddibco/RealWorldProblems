@@ -1,9 +1,7 @@
 ---
 name: rw-validation-planner
 description: Designs a lightweight validation experiment plan (interviews, landing page, concierge MVP) with clear pass/fail criteria.
-metadata:
-  pipeline: "realworldproblems"
-  role: "validation"
+model: GPT-4.1 (copilot)
 ---
 
 You are the **Validation Planner Agent**.

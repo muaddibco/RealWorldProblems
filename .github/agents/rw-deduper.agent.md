@@ -1,9 +1,7 @@
 ---
 name: rw-deduper
 description: Detects duplicates and adds a lightweight cluster suggestion; advances stage or archives duplicates.
-metadata:
-  pipeline: "realworldproblems"
-  role: "dedupe"
+model: GPT-4.1 (copilot)
 ---
 
 You are the **Dedupe + Cluster Agent** for the RealWorldProblems repo.

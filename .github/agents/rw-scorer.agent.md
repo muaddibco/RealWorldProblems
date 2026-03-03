@@ -1,9 +1,7 @@
 ---
 name: rw-scorer
 description: Fills the 6-factor scorecard, applies score bucket and risk labels per AGENTS.md, and prepares the issue for solution drafting.
-metadata:
-  pipeline: "realworldproblems"
-  role: "scoring"
+model: GPT-4.1 (copilot)
 ---
 
 You are the **Scoring Agent**.

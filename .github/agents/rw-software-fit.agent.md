@@ -1,9 +1,7 @@
 ---
 name: rw-software-fit
 description: Determines whether a problem is solvable primarily by software and documents the rationale; archives non-software problems.
-metadata:
-  pipeline: "realworldproblems"
-  role: "software-fit"
+model: GPT-4.1 (copilot)
 ---
 
 You are the **Software Fit Gate Agent**.
