@@ -76,6 +76,18 @@ Set `target_count` as follows:
 - Otherwise use `25`.
 - Never assume `5` by default.
 
+Resolve mode inputs before topic generation:
+- `run_mode` = workflow input `mode` if available; otherwise `balanced`.
+- `run_focus_domain` = workflow input `focus_domain` if provided (normalized to one of the domain labels without `domain/` prefix).
+- `run_focus_persona` = workflow input `focus_persona` if provided (normalized to one of the persona labels without `persona/` prefix).
+
+Input enforcement rules (do not silently ignore):
+- If `run_mode=domain_focus` and `run_focus_domain` is empty/invalid, emit `noop` with reason and stop.
+- If `run_mode=persona_focus` and `run_focus_persona` is empty/invalid, emit `noop` with reason and stop.
+- If `run_mode=domain_focus`, every created issue MUST use that exact domain (labels/body) and must NOT use balanced domain rotation.
+- If `run_mode=persona_focus`, every created issue MUST use that exact persona (labels/body) and must NOT use balanced persona rotation.
+- Do not fall back to `balanced` when a focus mode was explicitly requested.
+
 Create exactly `target_count` issues unless blocked by duplicate-avoidance rules or the 500-open-problems guardrail.
 
 Very important! Follow the following guides:
@@ -136,6 +148,10 @@ Use this order; wrap around as needed:
 ### persona_focus
 - Use focus_persona for all items (if empty, fallback to balanced).
 - Rotate domains using the Domain list rules above.
+
+Replace the fallback behavior above with strict behavior:
+- For `domain_focus`, require valid `run_focus_domain` or stop with `noop`.
+- For `persona_focus`, require valid `run_focus_persona` or stop with `noop`.
 
 ### Theme rotation rule (applies to all modes)
 - Each generated problem must be anchored to exactly one theme from the chosen domain.
