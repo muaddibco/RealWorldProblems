@@ -1,0 +1,18 @@
+{
+  "headline": "GitHub[muaddibco/RealWorldProblems]: Problem: Seniors can't identify all tax deductions they're eligible for on pension income",
+  "url": "https://github.com/muaddibco/RealWorldProblems/issues/949",
+  "expected_usd": 69.99,
+  "strategy": "锁定明码 bounty；交付代码+run_log+sample_data，并准备自动交割链接。",
+  "raw_expected": "69.99 USD",
+  "bounty_literal": "$69.99",
+  "source_line": "## 🚨 发现新商机：GitHub[muaddibco/RealWorldProblems]: Problem: Seniors can't identify all tax deductions they're eligible for on pension income",
+  "kind": "generic_automation",
+  "difficulty": 1.0,
+  "score": 69.99,
+  "oid": "f89ca7a5c7ed4afeed536d08d95a00ee8fc5fa65ef1d7564c65166af3a19c0a8",
+  "payout": {
+    "asset": "USDT",
+    "chain": "EVM",
+    "wallet": "0xF57503F99fA20b912200ed90D26d945093136ef5"
+  }
+}
