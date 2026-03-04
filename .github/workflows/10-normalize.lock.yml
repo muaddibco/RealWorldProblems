@@ -42,49 +42,10 @@ concurrency:
 run-name: "RW: Normalize"
 
 jobs:
-  guard_intake_label:
-    runs-on: ubuntu-slim
-    outputs:
-      should_run: ${{ steps.check_label.outputs.should_run }}
-      reason: ${{ steps.check_label.outputs.reason }}
-    steps:
-      - name: Check for stage/0-intake label
-        id: check_label
-        run: |
-          python - << 'PY'
-          import json
-          import os
-
-          event_path = os.environ.get("GITHUB_EVENT_PATH", "")
-          should_run = False
-          reason = ""
-
-          try:
-            with open(event_path, "r", encoding="utf-8") as f:
-              event = json.load(f)
-            issue = event.get("issue") or {}
-            labels = [label.get("name", "") for label in (issue.get("labels") or [])]
-            should_run = "stage/0-intake" in labels
-            reason = f"labels={','.join(labels)}"
-          except Exception as exc:
-            reason = f"event_parse_error={exc}"
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-            out.write(f"should_run={'true' if should_run else 'false'}\n")
-            out.write(f"reason={reason}\n")
-
-          if should_run:
-            print("stage/0-intake found; continuing workflow.")
-          else:
-            print("stage/0-intake not found; exiting workflow before agent execution.")
-          PY
-
   activation:
-    needs:
-      - guard_intake_label
-      - pre_activation
+    needs: pre_activation
     if: >
-      (needs.guard_intake_label.outputs.should_run == 'true') && (needs.pre_activation.outputs.activated == 'true') && ((github.event_name != 'issues') || ((github.event.action != 'labeled') ||
+      (needs.pre_activation.outputs.activated == 'true') && ((github.event_name != 'issues') || ((github.event.action != 'labeled') ||
       (github.event.label.name == 'stage/0-intake')))
     runs-on: ubuntu-slim
     permissions:
@@ -1299,8 +1260,7 @@ jobs:
             await main();
 
   pre_activation:
-    needs: guard_intake_label
-    if: (needs.guard_intake_label.outputs.should_run == 'true') && ((github.event_name != 'issues') || ((github.event.action != 'labeled') || (github.event.label.name == 'stage/0-intake')))
+    if: (github.event_name != 'issues') || ((github.event.action != 'labeled') || (github.event.label.name == 'stage/0-intake'))
     runs-on: ubuntu-slim
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
