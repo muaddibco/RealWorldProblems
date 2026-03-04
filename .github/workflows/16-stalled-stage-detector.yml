@@ -20,8 +20,8 @@ on:
         description: "Optional exact stage label (e.g. stage/3-scored)"
         required: false
         default: ""
-  schedule:
-    - cron: "0 * * * *"
+  # schedule:
+  #   - cron: "0 * * * *"
 
 permissions:
   contents: read

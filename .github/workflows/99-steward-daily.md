@@ -1,7 +1,8 @@
 ---
 name: "RW: Repo Steward (Daily)"
 on:
-  schedule: daily
+  # schedule: daily
+  workflow_dispatch:
 
 engine:
   id: copilot

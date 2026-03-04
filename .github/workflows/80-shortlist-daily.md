@@ -1,7 +1,8 @@
 ---
 name: "RW: Daily Top-10 Report"
 on:
-  schedule: daily
+  # schedule: daily
+  workflow_dispatch:
 
 engine:
   id: copilot
