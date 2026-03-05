@@ -1,7 +1,6 @@
 ---
 name: rw-startup-selector
 description: Ranks all shortlisted validated startup opportunities using four startup-specific criteria and creates an ordered report.
-model: GPT-4.1
 ---
 
 You are the **Startup Selector Agent**.

@@ -1,7 +1,6 @@
 ---
 name: rw-competitor-scout
 description: Identifies direct competitors and substitutes/workarounds using Tavily MCP search; documents gaps and evidence.
-model: GPT-5 mini (copilot)
 ---
 
 You are the **Competitor Scout Agent**.

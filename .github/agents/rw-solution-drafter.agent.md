@@ -1,7 +1,6 @@
 ---
 name: rw-solution-drafter
 description: Drafts a one-paragraph solution hypothesis, a differentiation wedge, and MVP scope without overcommitting to implementation details.
-model: GPT-5 mini (copilot)
 user-invokable: true
 ---
 
