@@ -1,7 +1,7 @@
 ---
 name: "RW: Seed Problems"
 on:
-  schedule: every 4h
+  # schedule: every 4h
   workflow_dispatch:
     inputs:
       count:
