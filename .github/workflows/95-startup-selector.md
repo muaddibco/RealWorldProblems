@@ -42,28 +42,56 @@ Tooling note:
 ## Scope
 
 Find `type/problem` issues that are:
-- `stage/7-validation`
 - `wedge/credible`
 - `status/shortlisted`
+- (`stage/6-shortlist` OR `stage/7-validation`)
+- NOT `status/needs-info`
+- NOT `stage/9-archived`
 
-Rank them by these four startup-selection criteria:
-1. **Frequency of use** — how often will users engage (higher is better)
-2. **Low market crowding** — competitors are few or clearly differentiated. The better the situation with competitors, the higher the score.
-3. **Implementation simplicity** — MVP achievable in weeks, not months. The easier the development, the higher the score.
-4. **Viral promotion potential** — natural sharing loops or referral mechanics. The easier it is to advertise or distribute an application or portal, the higher the score.
+Use existing evidence from:
+- `rw:scorecard`
+- `rw:solution`
+- `rw:competitors`
+- `rw:wedge`
+- `rw:validation`
+- labels: `software-fit/*`, `risk/*`, `score/*`
+
+## Ranking model
+
+Score each candidate on a 1–5 scale using:
+1. Recurring usage potential
+2. Monetization signal
+3. Distribution advantage
+4. Implementation simplicity
+5. Competitive whitespace
+6. Validation readiness
+
+Rules:
+- Use existing issue evidence first; do not invent missing evidence.
+- If evidence is missing, assign conservative scores and mark confidence as low.
+- Penalize `software-fit/partial` by -1 total.
+- Penalize `risk/high` by -2 total.
+- Break ties by:
+  1) stage/7-validation over stage/6-shortlist
+  2) higher monetization signal
+  3) lower risk
 
 ## Output
 
 Create one `[ranking] <YYYY-MM-DD>` report issue containing:
-1. A scorecard for **every** matching issue using all four criteria (1–5 each).
-2. Only issues having all scores of 3 or higher should be included.
-3. A final markdown table ordered from highest total score to lowest.
-4. The **Top 30** issues from that ranking (or all issues if fewer than 30 match).
-5. Issue links, per-criterion scores, total score, and a short rationale per issue explaining why it was given that particular rating.
+1. Summary counts:
+   - total eligible
+   - high-confidence candidates
+   - excluded for missing evidence
+2. A scorecard for every eligible issue
+3. A final Top 30 table ordered by total score
+4. A short “Near misses” section
+5. For each top item:
+   - issue link
+   - per-criterion scores
+   - total
+   - confidence: high|medium|low
+   - short rationale
+   - recommended next action
 
-Do **not** update any problem issue body.
-Do **not** add or remove any labels.
-
-If no eligible candidates exist, emit `noop` with a short reason.
-
-Always emit create-issue or noop.
+If fewer than 5 eligible items exist, still create the report and explain what pipeline stages or labels are missing.
