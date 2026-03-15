@@ -75,9 +75,13 @@ Write decision into:
 - Remove label: stage/2-deduped
 - Optionally close as not planned (if supported)
 
-## Else (yes/partial)
-- Add label: stage/3-scored
-- Keep software-fit/* label
+## If software-fit/partial
+- Add labels: software-fit/partial, stage/9-archived, archive/other
+- Remove label: stage/2-deduped
+- Optionally close as not planned (if supported)
+
+## If software-fit/yes
+- Add labels: software-fit/yes, stage/3-scored
 - Remove label: stage/2-deduped
 
 Always emit safe outputs or noop.

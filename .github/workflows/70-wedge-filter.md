@@ -50,6 +50,22 @@ Operate ONLY if:
 - stage/6-shortlist
 - and does NOT have label agentic-workflows
 
+Otherwise noop.
+
+## Preconditions
+
+This stage decides the **go-to-market wedge**, not the underlying problem attractiveness.
+
+Expected evidence before deciding:
+- scorecard island present
+- solution island present
+- competitors island present
+
+If one of those is clearly missing:
+- add one short comment explaining what is missing
+- add label: status/needs-info
+- stop
+
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
@@ -60,23 +76,62 @@ Pick exactly one:
 - wedge/credible
 - wedge/weak
 
-Write into:
+A **credible wedge** means there is a realistic first entry path into the market, given the issue’s scorecard, proposed solution, and competitor landscape.
+
+A wedge is usually credible only if most of the following are true:
+- clear initial ICP / niche / narrow use case
+- distinct reason this segment would adopt now
+- believable first distribution path or acquisition channel
+- advantage that is hard enough to copy quickly (workflow, integration, timing, data, trust, cost structure, compliance positioning, or niche focus)
+- MVP can win for that narrow segment without needing a full platform build
+
+A wedge is usually weak if it is mainly:
+- better UI / nicer UX only
+- cheaper with no durable cost advantage
+- broader feature list in a crowded category
+- generic AI wrapper with no workflow lock-in
+- dependent on unrealistic partnerships, proprietary data, enterprise procurement, or regulatory approvals before first value
+
+## Write into wedge island
 
 <!-- rw:wedge:start -->
 - Decision: credible|weak
-- Why: ...
-- If credible: the “wedge” in one sentence
-- Main risks: ...
+- Wedge: one sentence describing the initial entry angle
+- ICP / niche: ...
+- Distribution path: ...
+- Why this can win early:
+  - ...
+  - ...
+- Main risks:
+  - ...
+  - ...
 <!-- rw:wedge:end -->
 
-## If wedge/weak
-- Add labels: wedge/weak, stage/9-archived, archive/no-wedge
+## Label handling
+Before applying new labels, remove any existing:
+- wedge/credible
+- wedge/weak
+- archive/no-wedge
+- status/shortlisted
+- stage/7-validation
+- stage/9-archived
+
+Then:
+
+### If wedge is weak
+- Add labels: wedge/weak, archive/no-wedge, stage/9-archived
 - Remove label: stage/6-shortlist
 - Optionally close as not planned
 
-## If wedge/credible
-- Add labels: wedge/credible, status/shortlisted
-- Keep stage/6-shortlist (do not advance here) OR advance to stage/7-validation if ready.
-  - Preferred: advance to stage/7-validation if validation plan is missing.
+### If wedge is credible
+- Add labels: wedge/credible, status/shortlisted, stage/7-validation
+- Remove label: stage/6-shortlist
+- Optionally remove label: status/needs-info if the issue is now sufficiently complete
+
+## Decision guidance relative to scoring
+- A high score does **not** automatically mean the wedge is credible.
+- Use the scorecard as context, especially Reachability, Feasibility, Risk, Evidence, and Confidence.
+- If the problem scored well but the entry angle is vague or easily copied, choose `wedge/weak`.
+- If the problem scored only moderately but the niche, distribution path, and advantage are very clear, `wedge/credible` can still be appropriate.
 
 Always emit safe outputs or noop.

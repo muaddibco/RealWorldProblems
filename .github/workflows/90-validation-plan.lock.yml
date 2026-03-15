@@ -22,7 +22,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"8d347c050025d76e46c0cfdc8d89de3c56c60443c16a1b8bd5246f5e57237f9c","compiler_version":"v0.58.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"736d51f5af4bd0ce58fb0fd2957fce1a2ece7b8c97506521096ead5524b30065","compiler_version":"v0.58.2","strict":true}
 
 name: "RW: Validation Plan"
 "on":
@@ -155,7 +155,7 @@ jobs:
           cat "/opt/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: create_issue, update_issue, add_labels, remove_labels, missing_tool, missing_data, noop
+          Tools: add_comment, create_issue, update_issue, add_labels, remove_labels, missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -340,7 +340,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > /opt/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_labels":{"blocked":["~*","*[bot]"],"max":10},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1},"remove_labels":{"max":10},"update_issue":{"max":1}}
+          {"add_comment":{"max":1},"add_labels":{"blocked":["~*","*[bot]"],"max":10},"create_issue":{"max":1},"missing_data":{},"missing_tool":{},"noop":{"max":1},"remove_labels":{"max":10},"update_issue":{"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
       - name: Write Safe Outputs Tools
         run: |
@@ -394,6 +394,43 @@ jobs:
                 "type": "object"
               },
               "name": "create_issue"
+            },
+            {
+              "description": "Add a comment to an existing GitHub issue, pull request, or discussion. Use this to provide feedback, answer questions, or add information to an existing conversation. For creating new items, use create_issue, create_discussion, or create_pull_request instead. IMPORTANT: Comments are subject to validation constraints enforced by the MCP server - maximum 65536 characters for the complete comment (including footer which is added automatically), 10 mentions (@username), and 50 links. Exceeding these limits will result in an immediate error with specific guidance. NOTE: By default, this tool requires discussions:write permission. If your GitHub App lacks Discussions permission, set 'discussions: false' in the workflow's safe-outputs.add-comment configuration to exclude this permission. CONSTRAINTS: Maximum 1 comment(s) can be added.",
+              "inputSchema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body": {
+                    "description": "The comment text in Markdown format. This is the 'body' field - do not use 'comment_body' or other variations. Provide helpful, relevant information that adds value to the conversation. CONSTRAINTS: The complete comment (your body text + automatically added footer) must not exceed 65536 characters total. Maximum 10 mentions (@username), maximum 50 links (http/https URLs). A footer (~200-500 characters) is automatically appended with workflow attribution, so leave adequate space. If these limits are exceeded, the tool call will fail with a detailed error message indicating which constraint was violated.",
+                    "type": "string"
+                  },
+                  "integrity": {
+                    "description": "Trustworthiness level of the message source (e.g., \"low\", \"medium\", \"high\").",
+                    "type": "string"
+                  },
+                  "item_number": {
+                    "description": "The issue, pull request, or discussion number to comment on. This is the numeric ID from the GitHub URL (e.g., 123 in github.com/owner/repo/issues/123). Can also be a temporary_id (e.g., 'aw_abc123') from a previously created issue in the same workflow run. If omitted, the tool auto-targets the issue, PR, or discussion that triggered this workflow. Auto-targeting only works for issue, pull_request, discussion, and comment event triggers — it does NOT work for schedule, workflow_dispatch, push, or workflow_run triggers. For those trigger types, always provide item_number explicitly, or the tool call will fail with an error.",
+                    "type": [
+                      "number",
+                      "string"
+                    ]
+                  },
+                  "secrecy": {
+                    "description": "Confidentiality level of the message content (e.g., \"public\", \"internal\", \"private\").",
+                    "type": "string"
+                  },
+                  "temporary_id": {
+                    "description": "Unique temporary identifier for this comment. Format: 'aw_' followed by 3 to 12 alphanumeric characters (e.g., 'aw_abc1', 'aw_Test123'). Auto-generated if not provided. The temporary ID is returned in the tool response so you can reference this comment later.",
+                    "pattern": "^aw_[A-Za-z0-9]{3,12}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "type": "object"
+              },
+              "name": "add_comment"
             },
             {
               "description": "Add labels to an existing GitHub issue or pull request for categorization and filtering. Labels must already exist in the repository. For creating new issues with labels, use create_issue with the labels property instead. CONSTRAINTS: Maximum 10 label(s) can be added.",
@@ -625,6 +662,24 @@ jobs:
           GH_AW_SAFE_OUTPUTS_TOOLS_EOF
           cat > /opt/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_EOF'
           {
+            "add_comment": {
+              "defaultMax": 1,
+              "fields": {
+                "body": {
+                  "required": true,
+                  "type": "string",
+                  "sanitize": true,
+                  "maxLength": 65000
+                },
+                "item_number": {
+                  "issueOrPRNumber": true
+                },
+                "repo": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              }
+            },
             "add_labels": {
               "defaultMax": 5,
               "fields": {
@@ -1212,6 +1267,7 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
+      discussions: write
       issues: write
       pull-requests: write
     concurrency:
@@ -1340,6 +1396,7 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
+      discussions: write
       issues: write
       pull-requests: write
     timeout-minutes: 15
@@ -1351,6 +1408,8 @@ jobs:
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
+      comment_id: ${{ steps.process_safe_outputs.outputs.comment_id }}
+      comment_url: ${{ steps.process_safe_outputs.outputs.comment_url }}
       create_discussion_error_count: ${{ steps.process_safe_outputs.outputs.create_discussion_error_count }}
       create_discussion_errors: ${{ steps.process_safe_outputs.outputs.create_discussion_errors }}
       created_issue_number: ${{ steps.process_safe_outputs.outputs.created_issue_number }}
@@ -1383,7 +1442,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,github.com,host.docker.internal,raw.githubusercontent.com,registry.npmjs.org,telemetry.enterprise.githubcopilot.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":10},\"create_issue\":{\"labels\":[\"type/experiment\"],\"max\":1,\"title_prefix\":\"[experiment] \"},\"missing_data\":{},\"missing_tool\":{},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":10},\"update_issue\":{\"allow_body\":true,\"max\":1}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":1},\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":10},\"create_issue\":{\"labels\":[\"type/experiment\"],\"max\":1,\"title_prefix\":\"[experiment] \"},\"missing_data\":{},\"missing_tool\":{},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":10},\"update_issue\":{\"allow_body\":true,\"max\":1}}"
         with:
           github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
           script: |

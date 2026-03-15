@@ -1,8 +1,7 @@
 ---
 name: "RW: Daily Top-10 Report"
 on:
-  # schedule: daily
-  workflow_dispatch:
+  schedule: daily
 
 engine:
   id: copilot
@@ -38,20 +37,100 @@ Tooling note:
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
 
-## Scope
-Generate a ranked list of the 10 most promising `type/problem` issues, prioritizing:
-- wedge/credible
-- score/top-10 then score/top-50
-- risk/low then risk/medium
-- and stages 6–7 (shortlist/validation)
-- excluding issues labeled `agentic-workflows`
+## Goal
+Create one daily report listing the 10 most promising `type/problem` issues that are currently the best candidates for validation work.
+
+This report should align with the updated pipeline logic:
+- stage 3 scores **problem attractiveness**
+- stage 6 decides whether the **market-entry wedge** is credible
+- this daily report should prioritize issues that are both attractive **and** wedge-credible, while surfacing confidence and evidence quality
+
+## Eligible issues
+Consider only issues that:
+- have label `type/problem`
+- have label `wedge/credible`
+- have label `score/top-10` or `score/top-50`
+- are in `stage/6-shortlist` or `stage/7-validation`
+- do NOT have label `agentic-workflows`
+- do NOT have label `stage/9-archived`
+
+If an issue is missing a scorecard island or wedge island, treat it as ineligible for the report.
+
+## Ranking logic
+Rank eligible issues using the following order of priority:
+
+1. **Validation readiness**
+   - prefer `stage/7-validation` over `stage/6-shortlist`
+   - rationale: once a credible wedge exists, the most valuable daily shortlist is what is ready for validation now
+
+2. **Score bucket**
+   - `score/top-10` above `score/top-50`
+
+3. **Confidence** from the scorecard island
+   - `high` above `medium` above `low`
+
+4. **Evidence** from the scorecard island
+   - `strong` above `medium` above `weak`
+
+5. **Risk label**
+   - `risk/low` above `risk/medium` above `risk/high`
+
+6. **Tie-break from scorecard and wedge content**
+   Prefer issues that show more of the following:
+   - higher urgency / failure cost
+   - clearer willingness-to-pay or strong payment proxy
+   - stronger reachability / believable first-user access
+   - stronger feasibility for a narrow MVP
+   - a more concrete wedge with a believable initial ICP and distribution path
+
+## Important ranking guidance
+- Do **not** re-score the problem from scratch; use the existing scorecard and wedge decision as the source of truth.
+- Do **not** promote an issue only because the problem is severe; it should already have a credible wedge.
+- If two issues are similar, prefer the one with higher confidence and stronger evidence, not the one with the more ambitious idea.
+- If an issue has `wedge/credible` but the wedge rationale is still vague, mention that explicitly in the report and rank it lower.
+- If an issue is in `stage/6-shortlist`, it can still appear in the report, but should usually rank below a similarly strong item already in `stage/7-validation`.
 
 ## Output
-Create ONE issue titled "[top10] <YYYY-MM-DD>" containing:
-- The top 10 list with links
-- One-line rationale per item
-- Recommended next action (usually validation experiment)
+Create ONE issue titled `[top10] <YYYY-MM-DD>` containing:
 
-If there are fewer than 3 eligible items, create a report explaining why and what to do next.
+### 1) Header summary
+A short summary with:
+- how many eligible items were found
+- how many were `stage/7-validation`
+- how many were `stage/6-shortlist`
+- any clear pipeline bottleneck (for example: many scored items but few credible wedges)
+
+### 2) Ranked Top 10
+For each item include:
+- issue link (`#123`)
+- one-line problem summary
+- current stage
+- score bucket + risk label
+- confidence + evidence
+- one sentence on why it made the shortlist
+- one sentence with the recommended next validation action
+
+### 3) Near misses
+Include up to 5 additional issues that almost made the list, with a short note on what held them back, such as:
+- only `score/top-50`
+- weaker evidence
+- higher risk
+- wedge credible but still vague
+- not yet at `stage/7-validation`
+
+### 4) Pipeline note
+End with a brief note on what the repo needs most next, such as:
+- more validation-ready items
+- stronger wedge definition
+- better evidence in scorecards
+- more competitor workups
+
+## Too few candidates
+If there are fewer than 3 eligible items, still create the daily report issue.
+Explain:
+- how many eligible items exist
+- the main reasons the shortlist is thin
+- what next workflow stages or labels are most often missing
+- the best immediate action to improve tomorrow’s shortlist quality
 
 Always emit create-issue or noop.

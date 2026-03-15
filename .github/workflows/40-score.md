@@ -3,7 +3,7 @@ name: "RW: Score Problems"
 on:
   issues:
     types: [labeled]
-    names: [stage/3-scored]   # scoring begins once stage/3-scored is applied
+    names: [stage/3-scored]
     lock-for-agent: true
 
 engine:
@@ -30,6 +30,8 @@ safe-outputs:
   update-issue:
     body: true
     max: 1
+  add-comment:
+    max: 1
   add-labels:
     blocked: ["~*", "*[bot]"]
     max: 10
@@ -44,10 +46,28 @@ safe-outputs:
 Operate ONLY if:
 - type/problem
 - stage/3-scored
-- and software-fit is yes or partial (software-fit/yes or software-fit/partial)
 - and does NOT have label agentic-workflows
 
-If software-fit is missing, add comment requesting it (or noop if not allowed) and stop.
+Otherwise noop.
+
+## Preconditions
+
+If software-fit is missing:
+- Add one short comment requesting a software-fit decision first
+- Add label: status/needs-info
+- Stop
+
+If software-fit is `software-fit/no`:
+- Noop and stop
+
+If normalized problem details are too incomplete to score reliably, add a short note in the scorecard island, add `status/needs-info`, and stop.
+
+Minimum expected inputs before scoring:
+- clear problem statement / JTBD
+- who experiences it
+- context or trigger moment
+- pain / consequence / stakes
+- current workaround or status quo
 
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
@@ -62,24 +82,61 @@ Write into:
 |---|---:|---|
 | Severity | | |
 | Frequency | | |
+| Urgency / failure cost | | |
 | Willingness-to-pay | | |
 | Reachability | | |
 | Feasibility | | |
-| Wedge plausibility | | |
 | **Total (max 30)** | | |
 
+- Evidence: weak|medium|strong
+- Confidence: low|medium|high
 - Risk: low|medium|high (+ why)
+- Main constraints:
+  - ...
 <!-- rw:scorecard:end -->
 
-## Apply bucket labels
-Use AGENTS.md thresholds:
-- score/top-10 (≥24)
-- score/top-50 (20–23)
-- score/long-tail (≤19)
+## Scoring rules
+Score the **problem attractiveness**, not the final company outcome.
 
-Also apply one risk label: risk/low|risk/medium|risk/high.
+Use conservative scoring when evidence is weak.
+
+Interpret dimensions as:
+- **Severity**: how painful or costly the problem is when it happens
+- **Frequency**: how often the target user experiences it
+- **Urgency / failure cost**: whether the user must act now, and what happens if they do nothing
+- **Willingness-to-pay**: direct payment likelihood or strong proxy (time saved, revenue protected, penalties avoided)
+- **Reachability**: how realistically the first users can be found and reached
+- **Feasibility**: how quickly an MVP can create real value with software
+
+Important:
+- Do **not** score wedge here; wedge is evaluated later in the dedicated wedge stage.
+- If software-fit is `partial`, Feasibility should rarely exceed 3 unless the non-software portion is minor.
+- If the problem clearly depends on hard-to-get APIs, partnerships, compliance approvals, hardware rollout, or difficult data access, lower Reachability and/or Feasibility and raise Risk.
+- If the evidence is mostly inferred and not explicit in the issue body, lower Confidence and score conservatively.
+
+## Apply bucket labels
+Before applying new labels, remove any existing:
+- score/top-10
+- score/top-50
+- score/long-tail
+- risk/low
+- risk/medium
+- risk/high
+
+Then apply exactly one score bucket using AGENTS.md thresholds:
+- `score/top-10` for total >= 24 **and** confidence is not low
+- `score/top-50` for total 20–23, or total >= 24 with confidence low
+- `score/long-tail` for total <= 19, or total 20–23 with confidence low
+
+Also apply exactly one risk label:
+- risk/low
+- risk/medium
+- risk/high
 
 ## Advance
-After scoring, add label stage/4-solution and remove label stage/3-scored.
+If scored successfully:
+- Add label: stage/4-solution
+- Remove label: stage/3-scored
+- Optionally remove label: status/needs-info if it is present and the issue is now sufficiently complete
 
 Always emit safe outputs or noop.

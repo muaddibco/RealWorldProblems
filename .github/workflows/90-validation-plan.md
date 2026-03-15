@@ -34,6 +34,8 @@ safe-outputs:
     title-prefix: "[experiment] "
     labels: [type/experiment]
     max: 1
+  add-comment:
+    max: 1
   add-labels:
     blocked: ["~*", "*[bot]"]
     max: 10
@@ -43,51 +45,126 @@ safe-outputs:
   noop:
 ---
 
-# Create validation experiment plan for shortlisted problems
+# Create a validation plan focused on the next highest-value uncertainty
 
 Operate ONLY if:
 - type/problem
 - stage/7-validation
-- and wedge/credible OR status/shortlisted
+- and wedge/credible
 - and does NOT have label agentic-workflows
+- and does NOT have label stage/9-archived
+
+Otherwise noop.
+
+## What this stage is for
+This stage should turn a validation-ready problem into a **practical next experiment**.
+
+It should align with the updated pipeline logic:
+- stage 3 scored **problem attractiveness**
+- stage 6 decided the **market-entry wedge**
+- stage 7 should test the **most decision-critical remaining assumption** before more build or go-to-market work
+
+Do **not** produce a generic plan that tries to validate everything at once.
+Choose the single highest-value uncertainty, or at most two closely related uncertainties.
+
+## Preconditions
+Expected inputs before planning:
+- scorecard island present
+- wedge island present
+- solution island present
+
+Competitors island is helpful context and should usually exist by this stage, but the plan may still proceed if the scorecard, solution, and wedge are all present and sufficiently specific.
+
+If any required island is clearly missing:
+- add one short comment explaining what is missing
+- add label: status/needs-info
+- stop
 
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
 
-## 1) Write the validation plan into the parent issue
+## Planning logic
+Use the scorecard and wedge islands as the source of truth.
+
+Prioritize the experiment around the weakest decision-critical assumption, especially when one of these is uncertain:
+- willingness-to-pay
+- reachability / ability to access the initial ICP
+- wedge adoption / whether the narrow entry angle is compelling
+- feasibility of the MVP delivering value in the target workflow
+- urgency / failure cost being strong enough to trigger action now
+
+### Method selection guidance
+Prefer methods based on confidence, evidence, and the type of uncertainty:
+- If **Evidence** is weak or **Confidence** is low, prefer **interviews** or a **concierge MVP** first.
+- If willingness-to-pay is the main open question, prefer **paid pilot**, pricing conversations, or a **landing page + waitlist** with a concrete offer.
+- If reachability / channel is the main open question, prefer **landing page + waitlist** or direct outreach tests tied to the wedge ICP.
+- If workflow fit is the main open question, prefer **concierge MVP** or structured interviews around the trigger moment and current workaround.
+- If feasibility is the main open question, define a small technical proof or fake-door test that validates whether users would adopt the MVP behavior.
+
+Do **not** recommend a paid pilot when the issue still lacks a credible ICP, recruiter path, or concrete value proposition.
+
+## Write the validation plan into the parent issue
 
 <!-- rw:validation:start -->
+### Validation goal
+- Primary uncertainty: ...
+- Why this is the next thing to test now: ...
+
 ### Hypothesis
 ...
 
-### Method (choose 1–2)
-- Interviews (10–15)
-- Landing page + waitlist
-- Concierge MVP
-- Paid pilot
+### Method (choose 1 primary, optional 1 secondary)
+- ...
+
+### Target participant / customer
+- ...
+
+### Recruiting path
+- ...
 
 ### Success criteria (pass/fail)
 - ...
 
-### Interview questions (optional)
+### Evidence to collect
+- ...
+
+### Interview questions or test script (optional)
 - ...
 
 ### Next action if PASS / if FAIL
 - PASS: ...
-- FAIL: archive with reason ...
+- FAIL: ...
+
+### Planning notes
+- Scorecard signals used: confidence=..., evidence=..., risk=...
+- Wedge assumption being tested: ...
+- Experiment issue: #<new id> (if created)
 <!-- rw:validation:end -->
 
-## 2) Create a child experiment issue (optional but recommended)
-Create one `type/experiment` issue with:
-- Title: "[experiment] <short problem name>"
-- Body: copy the same hypothesis/method/success criteria
-- Include a link back to the parent problem issue.
+## Child experiment issue
+Create one `type/experiment` child issue when the plan is concrete enough to run.
 
-If you create the experiment issue, also add a short line in the parent’s validation island:
-- "Experiment issue: #<new id>"
+Issue requirements:
+- Title: `[experiment] <short problem name> - <primary uncertainty>`
+- Body should mirror the parent validation island in compact form
+- Include:
+  - parent problem link/reference
+  - primary uncertainty
+  - hypothesis
+  - method
+  - recruiting path
+  - success criteria
+  - pass/fail next action
 
-Tip: If you use temporary IDs (aw_...) for references, safe outputs can replace them later. :contentReference[oaicite:12]{index=12}
+If an experiment issue is created, add its reference in the parent validation island.
+
+## Label handling
+If the validation plan is created successfully:
+- optionally remove `status/needs-info` if the issue is now sufficiently complete
+
+Do **not** advance the issue to another stage here.
+This stage prepares validation work; it does not claim validation has been completed.
 
 Always emit safe outputs or noop.
