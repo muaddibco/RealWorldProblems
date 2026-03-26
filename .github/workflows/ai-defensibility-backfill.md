@@ -31,7 +31,7 @@ safe-outputs:
   update-issue:
     body: true
     target: "*"
-    max: 25
+    max: 50
   add-labels:
     blocked: ["~*", "*[bot]"]
     target: "*"
@@ -61,7 +61,7 @@ Find existing `type/problem` issues that:
 - do NOT have label `agentic-workflows`
 - do NOT already have any `ai-defensibility/*` label
 
-Then, process up to `${{ inputs.limit }}` issues, but never more than 25 in a single run.
+Then, process up to `${{ inputs.limit }}` issues, but never more than 50 in a single run.
 
 For each selected issue:
 1. Read the issue
@@ -80,14 +80,16 @@ For each selected issue:
 
 ## Input handling
 - Treat `${{ inputs.limit }}` as the requested maximum count for this run.
-- If the input is missing, invalid, non-numeric, or greater than 25, treat it as 25.
+- If the input is missing, invalid, non-numeric, or greater than 50, treat it as 50.
 - If the input is less than 1, treat it as 1.
 
 ## Selection priority
+Skip any issue that does not have a `rw:solution` island with meaningful content.
+Do not create AI-defensibility output for issues that lack a drafted solution.
+
 Prioritize issues that:
 - are in `stage/7-validation`
 - are missing the `rw:ai-defensibility` island
-- have a solution hypothesis present
 - do not yet have AI labels
 
 If more than `${{ inputs.limit }}` issues qualify, only process the top-priority subset within the limit.
@@ -107,7 +109,7 @@ Write into:
 | Data moat | | |
 | Integration depth | | |
 | Switching cost | | |
-| **Total (max 25)** | | |
+| **Total (max 50)** | | |
 
 ### Verdict
 - Defensibility: strong | medium | weak

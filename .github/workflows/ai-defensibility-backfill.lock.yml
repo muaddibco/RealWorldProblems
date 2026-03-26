@@ -21,7 +21,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"7f62a49b48748ef049aa7eaacdece95098d524125e0b501d438a3da7f510c8c0","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"3fc41b8cdb33c95bbc8d10ae042c16f754cd58f3fcb5cfb7105ca6eff4f0814c","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
 
 name: "RW: AI Defensibility Backfill"
 "on":
@@ -136,7 +136,7 @@ jobs:
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: create_issue, update_issue(max:25), add_labels(max:50), remove_labels(max:50), missing_tool, missing_data, noop
+          Tools: create_issue, update_issue(max:50), add_labels(max:50), remove_labels(max:50), missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -332,7 +332,7 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_labels":{"blocked":["~*","*[bot]"],"max":50,"target":"*"},"create_issue":{"close_older_issues":true,"labels":["type/report"],"max":1,"title_prefix":"[ai-backfill] "},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"remove_labels":{"blocked":["~*"],"max":50,"target":"*"},"update_issue":{"allow_body":true,"max":25,"target":"*"}}
+          {"add_labels":{"blocked":["~*","*[bot]"],"max":50,"target":"*"},"create_issue":{"close_older_issues":true,"labels":["type/report"],"max":1,"title_prefix":"[ai-backfill] "},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"remove_labels":{"blocked":["~*"],"max":50,"target":"*"},"update_issue":{"allow_body":true,"max":50,"target":"*"}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
       - name: Write Safe Outputs Tools
         run: |
@@ -342,7 +342,7 @@ jobs:
               "add_labels": " CONSTRAINTS: Maximum 50 label(s) can be added. Target: *.",
               "create_issue": " CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[ai-backfill] \". Labels [\"type/report\"] will be automatically added.",
               "remove_labels": " CONSTRAINTS: Maximum 50 label(s) can be removed. Target: *.",
-              "update_issue": " CONSTRAINTS: Maximum 25 issue(s) can be updated. Target: *. Body updates are allowed."
+              "update_issue": " CONSTRAINTS: Maximum 50 issue(s) can be updated. Target: *. Body updates are allowed."
             },
             "repo_params": {},
             "dynamic_tools": []
@@ -1145,7 +1145,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,github.com,host.docker.internal,raw.githubusercontent.com,registry.npmjs.org,telemetry.enterprise.githubcopilot.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":50,\"target\":\"*\"},\"create_issue\":{\"close_older_issues\":true,\"labels\":[\"type/report\"],\"max\":1,\"title_prefix\":\"[ai-backfill] \"},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"true\"},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":50,\"target\":\"*\"},\"update_issue\":{\"allow_body\":true,\"max\":25,\"target\":\"*\"}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":50,\"target\":\"*\"},\"create_issue\":{\"close_older_issues\":true,\"labels\":[\"type/report\"],\"max\":1,\"title_prefix\":\"[ai-backfill] \"},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"true\"},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":50,\"target\":\"*\"},\"update_issue\":{\"allow_body\":true,\"max\":50,\"target\":\"*\"}}"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
