@@ -35,7 +35,7 @@ safe-outputs:
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
 
 ## Goal
 Create one daily report listing the 10 most promising `type/problem` issues that are currently the best candidates for validation work.

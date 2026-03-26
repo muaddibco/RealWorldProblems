@@ -38,6 +38,20 @@ Agents operate on GitHub Issues (`type/problem`) and move them through structure
 - `stage/8-selected`
 - `stage/9-archived`
 
+### Stage semantics
+
+- `stage/0-intake` — raw problem candidate exists but is not yet normalized
+- `stage/1-normalized` — problem is rewritten into canonical JTBD/problem format
+- `stage/2-deduped` — duplicate check is complete; issue is ready for software-fit evaluation
+- `stage/3-scored` — software-fit passed and the issue is ready for **problem-attractiveness scoring**
+- `stage/4-solution` — a solution hypothesis is drafted
+- `stage/ai-defensibility` — the drafted solution is evaluated for durability against AI commoditization
+- `stage/5-competitors` — direct competitors, substitutes, and market context are researched
+- `stage/6-shortlist` — wedge quality is decided: credible wedge vs weak wedge
+- `stage/7-validation` — next validation experiment is planned for a wedge-credible opportunity
+- `stage/8-selected` — chosen for focused execution / incubation
+- `stage/9-archived` — removed from the active pipeline with exactly one archive reason
+
 ### Status
 - `status/needs-info`
 - `status/duplicate`
@@ -48,6 +62,16 @@ Agents operate on GitHub Issues (`type/problem`) and move them through structure
 - `software-fit/yes`
 - `software-fit/partial`
 - `software-fit/no`
+
+Interpretation:
+- `software-fit/yes` = software can deliver most of the value end-to-end
+- `software-fit/partial` = software can deliver meaningful value, but the solution still depends on meaningful non-software elements such as human ops, hardware, field work, partnerships, or constrained data access
+- `software-fit/no` = the problem is not meaningfully solvable with software as the main product lever
+
+Stage behavior:
+- `software-fit/yes` → proceed to `stage/3-scored`
+- `software-fit/partial` → proceed to `stage/3-scored`
+- `software-fit/no` → archive with `archive/not-software`
 
 ### Score buckets
 - `score/top-10`
@@ -156,36 +180,69 @@ Agents MUST use these markers in issue bodies and only update content between th
 
 If any of these are missing after normalization, set `status/needs-info` and stop.
 
+The normalization stage is responsible for ensuring the issue has:
+- exactly one `persona/*` label
+- 1–3 `domain/*` labels
+
+If missing at intake, the normalizer should backfill them from:
+1. existing valid labels
+2. explicit body fields such as `Domain: ...` and `Persona: ...`
+3. conservative inference from the issue content when clear
+
+If persona or domain cannot be determined confidently, the issue should receive `status/needs-info` and should not advance.
+
+Required normalized structure:
+
 - JTBD one-liner (“When __, I want __, so I can __.”)
 - Context + frequency
 - Pain / stakes
+- Trigger or failure moment (what happens if the user does nothing)
 - Current workaround
 - Persona + domain labels
 
 ## 4) Scoring rubric (1–5 each)
 
-Agents fill a scorecard (sum 6 dimensions; max 30).
+Agents fill a scorecard for **problem attractiveness** (sum 6 dimensions; max 30).
 
 1. **Severity (pain)**
+   - How painful or costly the problem is when it happens
+
 2. **Frequency**
-3. **Willingness to pay / strong proxy** (time, money, risk)
-4. **Reachability** (distribution: SEO/community/marketplaces/sales)
-5. **Feasibility** (MVP in weeks, not months)
-6. **Wedge plausibility** (clear reason we win)
+   - How often the target user experiences it
+
+3. **Urgency / failure cost**
+   - Whether the user must act now, and what happens if they do nothing
+
+4. **Willingness to pay / strong proxy**
+   - Direct payment likelihood or strong proxy such as time saved, revenue protected, penalties avoided, or risk reduced
+
+5. **Reachability**
+   - How realistically the first users can be found and reached
+
+6. **Feasibility**
+   - How quickly an MVP can create real value with software
 
 Interpretation:
 - 1 = very weak
 - 3 = medium / uncertain
 - 5 = strong evidence / clear
 
+Important:
+- Stage 3 scores **problem attractiveness**, not the final company outcome.
+- Do **not** score wedge here; wedge is evaluated later in the dedicated wedge stage.
+- Use conservative scoring when evidence is weak.
+- If software-fit is `software-fit/partial`, Feasibility should rarely exceed 3 unless the non-software portion is minor.
+- If the problem clearly depends on hard-to-get APIs, partnerships, compliance approvals, hardware rollout, or difficult data access, lower Reachability and/or Feasibility and raise Risk.
+- If the evidence is mostly inferred and not explicit in the issue body, lower Confidence and score conservatively.
+
 Buckets:
-- `score/top-10`: total ≥ 24
-- `score/top-50`: total 20–23
-- `score/long-tail`: total ≤ 19
+- `score/top-10`: total ≥ 24 and confidence is not low
+- `score/top-50`: total 20–23, or total ≥ 24 with confidence low
+- `score/long-tail`: total ≤ 19, or total 20–23 with confidence low
 
 Risk label:
-- `risk/high`: regulated / partnerships / heavy dependencies
-- else `risk/medium` or `risk/low`
+- `risk/high`: regulated / partnership-dependent / difficult data access / hardware / heavy operational complexity
+- otherwise `risk/medium` or `risk/low`
 
 ## 4A) AI defensibility rubric (1–5 each)
 
@@ -306,6 +363,17 @@ Agents move issues forward by:
 Happy path:
 `stage/0-intake → stage/1-normalized → stage/2-deduped → stage/3-scored → stage/4-solution → stage/ai-defensibility → stage/5-competitors → stage/6-shortlist → stage/7-validation`
 
+Decision ownership by stage:
+- Normalize stage defines the canonical problem statement
+- Dedupe stage decides duplicate vs distinct problem
+- Software-fit gate decides whether software can realistically solve the problem
+- Score stage evaluates **problem attractiveness**
+- Solution stage drafts a solution hypothesis
+- AI Defensibility stage evaluates whether the solution is durable vs thin AI-wrapper risk
+- Competitor stage maps direct competitors, substitutes, and gaps
+- Wedge stage decides whether there is a **credible market-entry wedge**
+- Validation stage defines the **next decision-critical experiment**
+
 Each stage:
 - writes its island
 - updates labels
@@ -333,38 +401,46 @@ Each stage:
 
 Archive when:
 
-- duplicate → `archive/duplicate`
+- duplicate → add `status/duplicate` and archive with `archive/other`
 - not software → `archive/not-software`
 - weak wedge → `archive/no-wedge`
 
 ### Important
 
+- Duplicates do **not** use a dedicated `archive/duplicate` label.
+- Use `status/duplicate` to indicate duplicate status.
+- Use `archive/other` as the archive reason for duplicates.
+
 `ai-defensibility/weak` ≠ automatic archive
 
 Instead:
 - prefer solution rewrite
-- only archive if wedge also weak
-
----
+- only archive if wedge is also weak
 
 ## 10) Downstream interpretation
 
-### Competitor stage
+### Score stage
+- evaluates **problem attractiveness**
+- does not decide market wedge
+- does not decide final company quality
 
-- weak defensibility → look for AI substitutes
-- strong defensibility → validate uniqueness
+### AI defensibility stage
+- evaluates whether the proposed solution is durable or easily commoditized by better general AI
+- weak defensibility should usually trigger redesign, not automatic archive
+
+### Competitor stage
+- weak defensibility → look carefully for AI substitutes and thin-wrapper risks
+- strong defensibility → validate whether the claimed uniqueness is real in-market
 
 ### Wedge stage
-
-- weak + weak defensibility → likely `wedge/weak`
+- decides whether there is a believable narrow entry path into the market
+- a high score does **not** automatically imply a credible wedge
+- weak wedge plus weak AI defensibility is a strong archive signal
 
 ### Validation stage
-
-If defensibility is not strong:
-- test against “AI + manual workflow”
-- verify users prefer product over generic AI
-
----
+- tests the most decision-critical remaining uncertainty
+- if defensibility is not strong, test against “AI + manual workflow”
+- verify that users prefer the product over generic AI plus existing tools
 
 ## 11) Steward rules
 
@@ -373,27 +449,40 @@ For up to 10 issues per run:
 - ensure exactly one `stage/*`
 - ensure persona exists
 - ensure archive reason exists if archived
-- ensure islands exist
+- ensure stage-relevant islands exist
 
-### AI-specific checks
+Expected islands by stage:
+- `stage/1-normalized` or later → `rw:normalized`
+- `stage/2-deduped` or later → `rw:dedupe`
+- if software-fit has been decided → `rw:software-fit`
+- `stage/3-scored` or later → `rw:scorecard`
+- `stage/4-solution` or later → `rw:solution`
+- `stage/ai-defensibility` or later → `rw:ai-defensibility`
+- `stage/5-competitors` or later → `rw:competitors`
+- `stage/6-shortlist` or later → `rw:wedge`
+- `stage/7-validation` or later → `rw:validation`
 
-If issue is in or past AI stage:
+AI-specific checks:
+- ensure at most one `ai-defensibility/*`
+- ensure at most one `ai-risk/*`
+- ensure `rw:ai-defensibility` island exists for issues in or past AI defensibility stage
 
-- ensure ≤1 `ai-defensibility/*`
-- ensure ≤1 `ai-risk/*`
-- ensure `rw:ai-defensibility` island exists
-
-If missing:
-
-<!-- rw:ai-defensibility:start --> <!-- rw:ai-defensibility:end -->
-
----
+If missing, insert empty island markers only.
+Do not rewrite substantive stage content during stewardship.
 
 ## 12) No-op policy
 
 If the workflow trigger condition does not match (wrong labels/type), or there is nothing to change:
-- Emit `noop` with a short reason (e.g., “Not a type/problem issue”).
-Safe outputs documentation warns missing outputs can fail a run. :contentReference[oaicite:7]{index=7}
+- Emit `noop` with a short reason (for example: `Not a type/problem issue`).
+
+If a required workflow tool is unavailable:
+- Emit `noop` with a short reason describing the missing requirement.
+- Example: `missing GitHub read tools`
+
+If an optional tool is unavailable but the workflow defines a fallback:
+- follow the fallback behavior instead of nooping
+
+Safe outputs documentation warns missing outputs can fail a run.
 
 ## 13) Philosophy
 
@@ -404,8 +493,6 @@ It optimizes for:
 - problems that matter
 - solutions that can be built quickly
 - products that survive AI commoditization
-
----
 
 # Final rule
 

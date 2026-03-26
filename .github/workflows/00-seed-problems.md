@@ -66,7 +66,7 @@ safe-outputs:
 Tooling note:
 - Search/read existing issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+- If GitHub read tools are unavailable in the model tool list, emit `noop` exactly once with reason `missing GitHub read tools` and stop.
 
 ## Objective
 Generate new `type/problem` issues that are:
@@ -350,9 +350,13 @@ Examples:
 - SHOULD include:
   - `domain/<domain>`
   - `persona/<persona>`
-- If variable labels cannot be added at creation time, include both in the body:
-  - `Domain: <domain>`
-  - `Persona: <persona>`
+
+### Body metadata
+Always include both in the issue body:
+- `Domain: <domain>`
+- `Persona: <persona>`
+
+These fields are the canonical fallback source for the normalizer if labels are missing or inconsistent.
 
 ## Quality constraints (avoid low-signal issues)
 Do not create:

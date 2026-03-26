@@ -19,12 +19,26 @@ You are the **Repo Steward Agent**.
 ## What this stage is responsible for
 This steward pass keeps the repo internally consistent with the updated pipeline logic:
 - stage 3 = **problem attractiveness**
+- stage 4 = **solution hypothesis**
+- stage ai-defensibility = **AI durability / commoditization risk**
+- stage 5 = **competitor and substitute context**
 - stage 6 = **market-entry wedge credibility**
 - stage 7 = **next decision-critical validation experiment**
 
 Your job is therefore twofold:
 1) apply small, high-confidence hygiene fixes on individual issues
 2) produce a daily report that explains where the pipeline is getting stuck
+
+### AI-specific checks
+If issue is in or past AI defensibility stage:
+
+- ensure at most one `ai-defensibility/*`
+- ensure at most one `ai-risk/*`
+- ensure `rw:ai-defensibility` island exists
+
+If issue is past AI defensibility stage and both AI label groups are missing entirely:
+- note the inconsistency in the steward island
+- add `status/needs-info` if appropriate
 
 ## General operating policy
 - Review `type/problem` issues only.
@@ -64,14 +78,28 @@ Only fix **obvious contradictions**.
 Ensure stage-relevant islands exist in the body. If missing, insert **empty markers only** at the end of the issue body.
 
 Expected islands by stage:
-- `stage/1-normalized`: normalization island
-- `stage/2-software-fit`: software-fit island
+- `stage/1-normalized` or later: normalization island
+- `stage/2-deduped` or later: dedupe island
+- if a software-fit decision exists (`software-fit/yes`, `software-fit/partial`, or `software-fit/no`): software-fit island
 - `stage/3-scored` or later: scorecard island
 - `stage/4-solution` or later: solution island
+- `stage/ai-defensibility` or later: AI defensibility island
 - `stage/5-competitors` or later: competitors island
 - `stage/6-shortlist` or later: wedge island
 - `stage/7-validation` or later: validation island
 - steward island may be added whenever needed
+
+Use these exact markers:
+- `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+- `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+- `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+- `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+- `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+- `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+- `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
+- `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
+- `<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
+- `<!-- rw:steward:start --> ... <!-- rw:steward:end -->`
 
 Do not populate stage content here. Only insert the markers.
 
@@ -79,16 +107,27 @@ Do not populate stage content here. Only insert the markers.
 Do not re-run prior stages, but flag obvious missing prerequisites.
 
 Examples:
+- `stage/1-normalized` without a normalization island -> insert it
+- `stage/2-deduped` without a normalization island or dedupe island -> insert missing islands and add `status/needs-info` if the issue looks structurally incomplete
+- issue has a `software-fit/*` label but no software-fit island -> insert the software-fit island
 - `stage/3-scored` without `software-fit/yes` or `software-fit/partial` -> add `status/needs-info`
+- `stage/3-scored` without a scorecard island -> insert it
 - `stage/4-solution` without a scorecard island -> add `status/needs-info`
-- `stage/5-competitors` without a solution island -> add `status/needs-info`
-- `stage/6-shortlist` without scorecard or competitors island -> add `status/needs-info`
+- `stage/4-solution` without a solution island -> insert it
+- `stage/ai-defensibility` without a solution island -> add `status/needs-info`
+- `stage/ai-defensibility` without an AI defensibility island -> insert it
+- `stage/5-competitors` without a solution island or AI defensibility island -> add `status/needs-info`
+- `stage/5-competitors` without a competitors island -> insert it
+- `stage/6-shortlist` without scorecard, solution, competitors, or wedge island -> insert missing islands and add `status/needs-info` if prerequisites are clearly incomplete
 - `stage/7-validation` without `wedge/credible` -> add `status/needs-info`
-- `stage/7-validation` without validation island -> insert it
+- `stage/7-validation` without a validation island -> insert it
+- `stage/8-selected` should usually already have scorecard, solution, AI defensibility, competitors, wedge, and validation islands; if several are missing, add `status/needs-info` and note the inconsistency
+- `stage/9-archived` must still have exactly one archive reason; missing islands are lower priority than archive consistency
 
 Important:
 - Do not downgrade stage labels just because the content looks weak.
 - Focus on structural consistency, not quality judgment.
+- Prefer adding `status/needs-info` over making speculative stage corrections.
 
 ## How to think about the updated pipeline
 Use the revised stage semantics when deciding whether something is inconsistent:

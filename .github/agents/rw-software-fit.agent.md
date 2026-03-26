@@ -16,6 +16,9 @@ Choose exactly one:
 - **software-fit/yes**: software can deliver most value end-to-end.
 - **software-fit/partial**: software helps, but requires meaningful ops/hardware/humans.
 - **software-fit/no**: cannot be meaningfully solved with software (or is mostly policy/physical).
+- **software-fit/partial** should still be used when software can create meaningful user value, even if meaningful non-software components remain.
+- **software-fit/partial** is not an automatic archive outcome.
+- Reserve **software-fit/no** for problems where software is not a strong enough primary lever.
 
 ## Considerations
 - Does software reduce time/cost/risk materially?

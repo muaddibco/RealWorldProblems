@@ -55,7 +55,7 @@ Otherwise noop.
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
 
 ## Decide software fit
 Choose exactly one label:
@@ -76,9 +76,8 @@ Write decision into:
 - Optionally close as not planned (if supported)
 
 ## If software-fit/partial
-- Add labels: software-fit/partial, stage/9-archived, archive/other
+- Add labels: software-fit/partial, stage/3-scored
 - Remove label: stage/2-deduped
-- Optionally close as not planned (if supported)
 
 ## If software-fit/yes
 - Add labels: software-fit/yes, stage/3-scored

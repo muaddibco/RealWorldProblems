@@ -55,21 +55,29 @@ Otherwise: emit noop.
 Tooling note:
 - Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
+- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
+
+## Hard rules
+
+- When the workflow classifies an issue as a duplicate, the intended label semantics are:
+  - `status/duplicate`
+  - `stage/9-archived`
+  - `archive/other`
+- Do not assume or request any `archive/duplicate` label.
 
 ## Tasks
 
 1) Search for likely duplicates among both open and closed issues:
    - similar titles ("Problem: ...")
    - similar JTBD lines
-  - prefer the best canonical match even if it is already closed (include status in notes)
+   - prefer the best canonical match even if it is already closed (include status in notes)
 
 2) If this issue is a duplicate:
-  - Add comment: "Duplicate of #<id> (reason: ..., target status: open|closed)"
-   - Add labels: status/duplicate, stage/9-archived, archive/other (or archive/low-pain etc. if appropriate)
+   - Add comment: "Duplicate of #<id> (reason: ..., target status: open|closed)"
+   - Add labels: status/duplicate, stage/9-archived, archive/other
    - Remove label: stage/1-normalized
    - Close issue with state-reason "duplicate" if supported; otherwise just label archived.
-  - Do not skip dedupe classification just because the canonical issue is closed.
+   - Do not skip dedupe classification just because the canonical issue is closed.
 
 3) If NOT a duplicate:
    - Write a short summary into the Dedupe island using update-issue + replace-island semantics:
@@ -82,5 +90,6 @@ Tooling note:
    - Remove label: stage/1-normalized
 
 ## Output requirements
+
 - Use update-issue with operation: replace-island for the dedupe island.
 - Always emit at least one safe output action, or noop.
