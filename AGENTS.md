@@ -1,6 +1,8 @@
 # RealWorldProblems – Agent Operating Manual (AGENTS.md)
 
-This repo is an “idea funnel” operated by GitHub Copilot/Workspace agents using Issues as the database.
+This repository is an **agent-driven pipeline** for discovering, evaluating, and validating real-world problems and potential software solutions.
+
+Agents operate on GitHub Issues (`type/problem`) and move them through structured stages using labels and structured “islands” inside issue bodies.
 
 ## 0) Core Principles
 
@@ -9,6 +11,11 @@ This repo is an “idea funnel” operated by GitHub Copilot/Workspace agents us
 3) **No free-form edits.** Agents must write only inside predefined **islands** (HTML comment markers) using `update-issue` + `operation: replace-island`. :contentReference[oaicite:4]{index=4}
 4) **Safe outputs or noop.** Every run must emit at least one safe-output operation or an explicit `noop`, otherwise the workflow can fail. :contentReference[oaicite:5]{index=5}
 5) **Be explicit when archiving.** Any archive requires exactly one `archive/*` reason label.
+6) Never overwrite user-written content outside islands
+7) Each problem must have:
+   - exactly one `stage/*` label
+   - exactly one `persona/*` label (or `status/needs-info`)
+8) Pipeline is **progressive filtering toward high-quality opportunities**
 
 ## 1) Canonical Labels
 
@@ -24,6 +31,7 @@ This repo is an “idea funnel” operated by GitHub Copilot/Workspace agents us
 - `stage/2-deduped`
 - `stage/3-scored`
 - `stage/4-solution`
+- `stage/ai-defensibility`
 - `stage/5-competitors`
 - `stage/6-shortlist`
 - `stage/7-validation`
@@ -54,6 +62,16 @@ This repo is an “idea funnel” operated by GitHub Copilot/Workspace agents us
 - `risk/high`
 - `risk/medium`
 - `risk/low`
+
+### AI defensibility labels
+- `ai-defensibility/strong`
+- `ai-defensibility/medium`
+- `ai-defensibility/weak`
+
+### AI risk labels
+- `ai-risk/low`
+- `ai-risk/medium`
+- `ai-risk/high`
 
 ### Archive reasons (exactly one when archived)
 - `archive/not-software`
@@ -114,6 +132,10 @@ Agents MUST use these markers in issue bodies and only update content between th
 <!-- rw:solution:start -->
 <!-- rw:solution:end -->
 
+### AI Defensibility Scorecard
+<!-- rw:ai-defensibility:start -->
+<!-- rw:ai-defensibility:end -->
+
 ### Competitors & Substitutes
 <!-- rw:competitors:start -->
 <!-- rw:competitors:end -->
@@ -165,20 +187,107 @@ Risk label:
 - `risk/high`: regulated / partnerships / heavy dependencies
 - else `risk/medium` or `risk/low`
 
-## 5) Stage transitions (the conveyor belt)
+## 4A) AI defensibility rubric (1–5 each)
 
-Agents move issues forward by:
-- adding the next stage label
-- removing the current stage label
-- writing their results into the correct island
+Agents fill an AI defensibility scorecard (sum 5 dimensions; max 25).
 
-Happy path:
-`0-intake → 1-normalized → 2-deduped → 3-scored → 4-solution → 5-competitors → 6-shortlist → 7-validation`
+1. **Replaceability**
+   - Could a better generic AI or simple prompt replace most of the value?
 
-Archive path:
-Any stage → `stage/9-archived` + one `archive/*` reason label (+ optionally close issue as not planned/duplicate).
+2. **Workflow ownership**
+   - Does the product execute or control a real workflow step, rather than only advising?
 
-## 6) Competitor research standards
+3. **Data moat**
+   - Does the product accumulate proprietary structure, memory, or outcome history?
+
+4. **Integration depth**
+   - Is the product embedded into meaningful systems, files, APIs, or operational tools?
+
+5. **Switching cost**
+   - Would replacing the product cause meaningful process loss, history loss, or retraining friction?
+
+Interpretation:
+- 1 = very weak
+- 3 = medium / uncertain
+- 5 = strong evidence / clear
+
+Thresholds:
+- `ai-defensibility/strong`: total 20–25
+- `ai-defensibility/medium`: total 14–19
+- `ai-defensibility/weak`: total 5–13
+
+AI risk:
+- `ai-risk/low` for strong
+- `ai-risk/medium` for medium
+- `ai-risk/high` for weak
+
+AI defensibility may be backfilled onto issues in later stages without changing their current `stage/*` label.
+
+## 5) Solution drafting rule
+
+Solution agents must default toward **AI-defensible products**.
+
+### Prefer
+
+- workflow ownership
+- systems of execution
+- monitoring / alerts
+- integration into real workflows
+- structured memory / data accumulation
+- narrow niche wedges
+
+### Avoid (by default)
+
+- “ChatGPT for X”
+- summarization-only
+- drafting-only
+- generic copilots
+- “better UI on LLM”
+
+### Mandatory self-check
+
+> If a much better LLM appears tomorrow, why does this product still matter?
+
+If weak → redesign.
+
+---
+
+## 6) AI Defensibility stage
+
+### Purpose
+
+Evaluate whether the solution is:
+- durable
+- defensible
+- not a thin AI wrapper
+
+### Output
+
+<!-- rw:ai-defensibility:start -->
+AI Defensibility Scorecard
+
+...
+
+Verdict
+Defensibility: strong | medium | weak
+AI risk: low | medium | high
+Why
+
+...
+
+How to improve defensibility
+
+...
+
+Kill shot test
+
+...
+
+<!-- rw:ai-defensibility:end -->
+
+---
+
+## 7) Competitor research standards
 
 When `web-search`/`web-fetch` are enabled:
 - List **direct competitors** and **substitutes/workarounds**
@@ -187,8 +296,117 @@ When `web-search`/`web-fetch` are enabled:
 
 Web tools are explicitly enabled per workflow and require network allowlists. :contentReference[oaicite:6]{index=6}
 
-## 7) No-op policy
+## 8) Stage transitions (the conveyor belt)
+
+Agents move issues forward by:
+- adding the next stage label
+- removing the current stage label
+- writing their results into the correct island
+
+Happy path:
+`stage/0-intake → stage/1-normalized → stage/2-deduped → stage/3-scored → stage/4-solution → stage/ai-defensibility → stage/5-competitors → stage/6-shortlist → stage/7-validation`
+
+Each stage:
+- writes its island
+- updates labels
+- advances exactly one step
+
+## Special sequencing
+
+### Solution → AI Defensibility
+
+- `stage/4-solution`
+→ write solution
+→ move to `stage/ai-defensibility`
+
+### AI Defensibility → Competitors
+
+- write defensibility island
+- apply:
+  - one `ai-defensibility/*`
+  - one `ai-risk/*`
+- move to `stage/5-competitors`
+
+---
+
+## 9) Archive rules
+
+Archive when:
+
+- duplicate → `archive/duplicate`
+- not software → `archive/not-software`
+- weak wedge → `archive/no-wedge`
+
+### Important
+
+`ai-defensibility/weak` ≠ automatic archive
+
+Instead:
+- prefer solution rewrite
+- only archive if wedge also weak
+
+---
+
+## 10) Downstream interpretation
+
+### Competitor stage
+
+- weak defensibility → look for AI substitutes
+- strong defensibility → validate uniqueness
+
+### Wedge stage
+
+- weak + weak defensibility → likely `wedge/weak`
+
+### Validation stage
+
+If defensibility is not strong:
+- test against “AI + manual workflow”
+- verify users prefer product over generic AI
+
+---
+
+## 11) Steward rules
+
+For up to 10 issues per run:
+
+- ensure exactly one `stage/*`
+- ensure persona exists
+- ensure archive reason exists if archived
+- ensure islands exist
+
+### AI-specific checks
+
+If issue is in or past AI stage:
+
+- ensure ≤1 `ai-defensibility/*`
+- ensure ≤1 `ai-risk/*`
+- ensure `rw:ai-defensibility` island exists
+
+If missing:
+
+<!-- rw:ai-defensibility:start --> <!-- rw:ai-defensibility:end -->
+
+---
+
+## 12) No-op policy
 
 If the workflow trigger condition does not match (wrong labels/type), or there is nothing to change:
 - Emit `noop` with a short reason (e.g., “Not a type/problem issue”).
 Safe outputs documentation warns missing outputs can fail a run. :contentReference[oaicite:7]{index=7}
+
+## 13) Philosophy
+
+This repo does NOT optimize for:
+- ideas that sound good today
+
+It optimizes for:
+- problems that matter
+- solutions that can be built quickly
+- products that survive AI commoditization
+
+---
+
+# Final rule
+
+**AI should be inside the product — not the product itself.**

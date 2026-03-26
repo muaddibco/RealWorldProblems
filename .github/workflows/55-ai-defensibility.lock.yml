@@ -21,14 +21,14 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"736d51f5af4bd0ce58fb0fd2957fce1a2ece7b8c97506521096ead5524b30065","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"f86c54e38e05ffa02c4a279f98adb47fab568dbce389eb6f226ecab5886be9aa","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
 
-name: "RW: Validation Plan"
+name: "RW: AI Defensibility Gate"
 "on":
   issues:
     # lock-for-agent: true # Lock-for-agent processed as issue locking in activation job
     # names: # Label filtering applied via job conditions
-    # - stage/7-validation # Label filtering applied via job conditions
+    # - stage/ai-defensibility # Label filtering applied via job conditions
     types:
     - labeled
 
@@ -37,14 +37,14 @@ permissions: {}
 concurrency:
   group: "gh-aw-${{ github.workflow }}-${{ github.event.issue.number || github.run_id }}"
 
-run-name: "RW: Validation Plan"
+run-name: "RW: AI Defensibility Gate"
 
 jobs:
   activation:
     needs: pre_activation
     if: >
       needs.pre_activation.outputs.activated == 'true' && (github.event_name != 'issues' || github.event.action != 'labeled' ||
-      github.event.label.name == 'stage/7-validation')
+      github.event.label.name == 'stage/ai-defensibility')
     runs-on: ubuntu-slim
     permissions:
       contents: read
@@ -73,7 +73,7 @@ jobs:
           GH_AW_INFO_VERSION: "latest"
           GH_AW_INFO_AGENT_VERSION: "latest"
           GH_AW_INFO_CLI_VERSION: "v0.64.0"
-          GH_AW_INFO_WORKFLOW_NAME: "RW: Validation Plan"
+          GH_AW_INFO_WORKFLOW_NAME: "RW: AI Defensibility Gate"
           GH_AW_INFO_EXPERIMENTAL: "false"
           GH_AW_INFO_SUPPORTS_TOOLS_ALLOWLIST: "true"
           GH_AW_INFO_STAGED: "false"
@@ -107,7 +107,7 @@ jobs:
       - name: Check workflow file timestamps
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          GH_AW_WORKFLOW_FILE: "90-validation-plan.lock.yml"
+          GH_AW_WORKFLOW_FILE: "55-ai-defensibility.lock.yml"
         with:
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
@@ -158,7 +158,7 @@ jobs:
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
           cat << 'GH_AW_PROMPT_EOF'
           <safe-output-tools>
-          Tools: add_comment, create_issue, update_issue, add_labels(max:10), remove_labels(max:10), missing_tool, missing_data, noop
+          Tools: update_issue, add_labels(max:10), remove_labels(max:10), missing_tool, missing_data, noop
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -194,7 +194,7 @@ jobs:
           </system>
           GH_AW_PROMPT_EOF
           cat << 'GH_AW_PROMPT_EOF'
-          {{#runtime-import .github/workflows/90-validation-plan.md}}
+          {{#runtime-import .github/workflows/55-ai-defensibility.md}}
           GH_AW_PROMPT_EOF
           } > "$GH_AW_PROMPT"
       - name: Interpolate variables and render templates
@@ -274,7 +274,7 @@ jobs:
       GH_AW_ASSETS_BRANCH: ""
       GH_AW_ASSETS_MAX_SIZE_KB: 0
       GH_AW_MCP_LOG_DIR: /tmp/gh-aw/mcp-logs/safeoutputs
-      GH_AW_WORKFLOW_ID_SANITIZED: 90validationplan
+      GH_AW_WORKFLOW_ID_SANITIZED: 55aidefensibility
     outputs:
       checkout_pr_success: ${{ steps.checkout-pr.outputs.checkout_pr_success || 'true' }}
       has_patch: ${{ steps.collect_output.outputs.has_patch }}
@@ -353,16 +353,14 @@ jobs:
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
           cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_EOF'
-          {"add_comment":{"max":1},"add_labels":{"blocked":["~*","*[bot]"],"max":10},"create_issue":{"labels":["type/experiment"],"max":1,"title_prefix":"[experiment] "},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"remove_labels":{"blocked":["~*"],"max":10},"update_issue":{"allow_body":true,"max":1}}
+          {"add_labels":{"blocked":["~*","*[bot]"],"max":10},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"remove_labels":{"blocked":["~*"],"max":10},"update_issue":{"allow_body":true,"max":1}}
           GH_AW_SAFE_OUTPUTS_CONFIG_EOF
       - name: Write Safe Outputs Tools
         run: |
           cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/tools_meta.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_META_EOF'
           {
             "description_suffixes": {
-              "add_comment": " CONSTRAINTS: Maximum 1 comment(s) can be added.",
               "add_labels": " CONSTRAINTS: Maximum 10 label(s) can be added.",
-              "create_issue": " CONSTRAINTS: Maximum 1 issue(s) can be created. Title will be prefixed with \"[experiment] \". Labels [\"type/experiment\"] will be automatically added.",
               "remove_labels": " CONSTRAINTS: Maximum 10 label(s) can be removed.",
               "update_issue": " CONSTRAINTS: Maximum 1 issue(s) can be updated. Body updates are allowed."
             },
@@ -372,24 +370,6 @@ jobs:
           GH_AW_SAFE_OUTPUTS_TOOLS_META_EOF
           cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_EOF'
           {
-            "add_comment": {
-              "defaultMax": 1,
-              "fields": {
-                "body": {
-                  "required": true,
-                  "type": "string",
-                  "sanitize": true,
-                  "maxLength": 65000
-                },
-                "item_number": {
-                  "issueOrPRNumber": true
-                },
-                "repo": {
-                  "type": "string",
-                  "maxLength": 256
-                }
-              }
-            },
             "add_labels": {
               "defaultMax": 5,
               "fields": {
@@ -406,39 +386,6 @@ jobs:
                 "repo": {
                   "type": "string",
                   "maxLength": 256
-                }
-              }
-            },
-            "create_issue": {
-              "defaultMax": 1,
-              "fields": {
-                "body": {
-                  "required": true,
-                  "type": "string",
-                  "sanitize": true,
-                  "maxLength": 65000
-                },
-                "labels": {
-                  "type": "array",
-                  "itemType": "string",
-                  "itemSanitize": true,
-                  "itemMaxLength": 128
-                },
-                "parent": {
-                  "issueOrPRNumber": true
-                },
-                "repo": {
-                  "type": "string",
-                  "maxLength": 256
-                },
-                "temporary_id": {
-                  "type": "string"
-                },
-                "title": {
-                  "required": true,
-                  "type": "string",
-                  "sanitize": true,
-                  "maxLength": 128
                 }
               }
             },
@@ -700,7 +647,7 @@ jobs:
           touch /tmp/gh-aw/agent-step-summary.md
           # shellcheck disable=SC1003
           sudo -E awf --env-all --container-workdir "${GITHUB_WORKSPACE}" --mount "${RUNNER_TEMP}/gh-aw:${RUNNER_TEMP}/gh-aw:ro" --mount "${RUNNER_TEMP}/gh-aw:/host${RUNNER_TEMP}/gh-aw:ro" --allow-domains "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,github.com,host.docker.internal,raw.githubusercontent.com,registry.npmjs.org,telemetry.enterprise.githubcopilot.com" --log-level info --proxy-logs-dir /tmp/gh-aw/sandbox/firewall/logs --audit-dir /tmp/gh-aw/sandbox/firewall/audit --enable-host-access --image-tag 0.25.0 --skip-pull --enable-api-proxy \
-            -- /bin/bash -c '/usr/local/bin/copilot --add-dir /tmp/gh-aw/ --log-level all --log-dir /tmp/gh-aw/sandbox/agent/logs/ --add-dir "${GITHUB_WORKSPACE}" --disable-builtin-mcps --agent rw-validation-planner --allow-all-tools --allow-all-paths --prompt "$(cat /tmp/gh-aw/aw-prompts/prompt.txt)"' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
+            -- /bin/bash -c '/usr/local/bin/copilot --add-dir /tmp/gh-aw/ --log-level all --log-dir /tmp/gh-aw/sandbox/agent/logs/ --add-dir "${GITHUB_WORKSPACE}" --disable-builtin-mcps --agent rw-ai-defensibility --allow-all-tools --allow-all-paths --prompt "$(cat /tmp/gh-aw/aw-prompts/prompt.txt)"' 2>&1 | tee -a /tmp/gh-aw/agent-stdio.log
         env:
           COPILOT_AGENT_RUNNER_TYPE: STANDALONE
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
@@ -887,11 +834,10 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
-      discussions: write
       issues: write
       pull-requests: write
     concurrency:
-      group: "gh-aw-conclusion-90-validation-plan"
+      group: "gh-aw-conclusion-55-ai-defensibility"
       cancel-in-progress: false
     outputs:
       noop_message: ${{ steps.noop.outputs.noop_message }}
@@ -922,7 +868,7 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_NOOP_MAX: "1"
-          GH_AW_WORKFLOW_NAME: "RW: Validation Plan"
+          GH_AW_WORKFLOW_NAME: "RW: AI Defensibility Gate"
         with:
           github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
           script: |
@@ -935,7 +881,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "RW: Validation Plan"
+          GH_AW_WORKFLOW_NAME: "RW: AI Defensibility Gate"
         with:
           github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
           script: |
@@ -949,10 +895,10 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "RW: Validation Plan"
+          GH_AW_WORKFLOW_NAME: "RW: AI Defensibility Gate"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
-          GH_AW_WORKFLOW_ID: "90-validation-plan"
+          GH_AW_WORKFLOW_ID: "55-ai-defensibility"
           GH_AW_SECRET_VERIFICATION_RESULT: ${{ needs.activation.outputs.secret_verification_result }}
           GH_AW_CHECKOUT_PR_SUCCESS: ${{ needs.agent.outputs.checkout_pr_success }}
           GH_AW_INFERENCE_ACCESS_ERROR: ${{ needs.agent.outputs.inference_access_error }}
@@ -972,7 +918,7 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
-          GH_AW_WORKFLOW_NAME: "RW: Validation Plan"
+          GH_AW_WORKFLOW_NAME: "RW: AI Defensibility Gate"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_NOOP_MESSAGE: ${{ steps.noop.outputs.noop_message }}
@@ -1049,7 +995,7 @@ jobs:
         if: always() && steps.detection_guard.outputs.run_detection == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          WORKFLOW_NAME: "RW: Validation Plan"
+          WORKFLOW_NAME: "RW: AI Defensibility Gate"
           WORKFLOW_DESCRIPTION: "No description provided"
           HAS_PATCH: ${{ needs.agent.outputs.has_patch }}
         with:
@@ -1127,7 +1073,7 @@ jobs:
             await main();
 
   pre_activation:
-    if: github.event_name != 'issues' || github.event.action != 'labeled' || github.event.label.name == 'stage/7-validation'
+    if: github.event_name != 'issues' || github.event.action != 'labeled' || github.event.label.name == 'stage/ai-defensibility'
     runs-on: ubuntu-slim
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
@@ -1160,25 +1106,20 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: read
-      discussions: write
       issues: write
       pull-requests: write
     timeout-minutes: 15
     env:
-      GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/90-validation-plan"
+      GH_AW_CALLER_WORKFLOW_ID: "${{ github.repository }}/55-ai-defensibility"
       GH_AW_ENGINE_ID: "copilot"
       GH_AW_ENGINE_MODEL: ${{ needs.agent.outputs.model }}
-      GH_AW_WORKFLOW_ID: "90-validation-plan"
-      GH_AW_WORKFLOW_NAME: "RW: Validation Plan"
+      GH_AW_WORKFLOW_ID: "55-ai-defensibility"
+      GH_AW_WORKFLOW_NAME: "RW: AI Defensibility Gate"
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
-      comment_id: ${{ steps.process_safe_outputs.outputs.comment_id }}
-      comment_url: ${{ steps.process_safe_outputs.outputs.comment_url }}
       create_discussion_error_count: ${{ steps.process_safe_outputs.outputs.create_discussion_error_count }}
       create_discussion_errors: ${{ steps.process_safe_outputs.outputs.create_discussion_errors }}
-      created_issue_number: ${{ steps.process_safe_outputs.outputs.created_issue_number }}
-      created_issue_url: ${{ steps.process_safe_outputs.outputs.created_issue_url }}
       process_safe_outputs_processed_count: ${{ steps.process_safe_outputs.outputs.processed_count }}
       process_safe_outputs_temporary_id_map: ${{ steps.process_safe_outputs.outputs.temporary_id_map }}
     steps:
@@ -1217,7 +1158,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "api.business.githubcopilot.com,api.enterprise.githubcopilot.com,api.github.com,api.githubcopilot.com,api.individual.githubcopilot.com,github.com,host.docker.internal,raw.githubusercontent.com,registry.npmjs.org,telemetry.enterprise.githubcopilot.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_comment\":{\"max\":1},\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":10},\"create_issue\":{\"labels\":[\"type/experiment\"],\"max\":1,\"title_prefix\":\"[experiment] \"},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"true\"},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":10},\"update_issue\":{\"allow_body\":true,\"max\":1}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"add_labels\":{\"blocked\":[\"~*\",\"*[bot]\"],\"max\":10},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"true\"},\"remove_labels\":{\"blocked\":[\"~*\"],\"max\":10},\"update_issue\":{\"allow_body\":true,\"max\":1}}"
         with:
           github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
           script: |
