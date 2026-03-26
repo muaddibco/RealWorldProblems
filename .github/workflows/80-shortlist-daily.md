@@ -42,8 +42,9 @@ Create one daily report listing the 10 most promising `type/problem` issues that
 
 This report should align with the updated pipeline logic:
 - stage 3 scores **problem attractiveness**
+- stage ai-defensibility evaluates **solution durability against AI commoditization**
 - stage 6 decides whether the **market-entry wedge** is credible
-- this daily report should prioritize issues that are both attractive **and** wedge-credible, while surfacing confidence and evidence quality
+- this daily report should prioritize issues that are attractive, wedge-credible, and validation-relevant now, while also surfacing confidence, evidence quality, and AI defensibility
 
 ## Eligible issues
 Consider only issues that:
@@ -75,7 +76,12 @@ Rank eligible issues using the following order of priority:
 5. **Risk label**
    - `risk/low` above `risk/medium` above `risk/high`
 
-6. **Tie-break from scorecard and wedge content**
+6. **AI defensibility**
+   - `ai-defensibility/strong` above `ai-defensibility/medium` above `ai-defensibility/weak`
+   - if the AI defensibility labels or island are missing, treat the issue conservatively and mention the gap in the report
+   - AI defensibility is a secondary ranking factor, not a replacement for validation readiness or wedge quality
+
+7. **Tie-break from scorecard and wedge content**
    Prefer issues that show more of the following:
    - higher urgency / failure cost
    - clearer willingness-to-pay or strong payment proxy
@@ -89,6 +95,9 @@ Rank eligible issues using the following order of priority:
 - If two issues are similar, prefer the one with higher confidence and stronger evidence, not the one with the more ambitious idea.
 - If an issue has `wedge/credible` but the wedge rationale is still vague, mention that explicitly in the report and rank it lower.
 - If an issue is in `stage/6-shortlist`, it can still appear in the report, but should usually rank below a similarly strong item already in `stage/7-validation`.
+- Do **not** let AI defensibility outweigh clear validation readiness, stronger evidence, or a substantially better wedge.
+- Use AI defensibility mainly as a display signal and a tie-breaker among otherwise similar candidates.
+- If an issue has weak AI defensibility but remains wedge-credible and validation-ready, include it when warranted, but call out that it should be tested against generic AI plus manual workflow.
 
 ## Output
 Create ONE issue titled `[top10] <YYYY-MM-DD>` containing:
@@ -98,6 +107,7 @@ A short summary with:
 - how many eligible items were found
 - how many were `stage/7-validation`
 - how many were `stage/6-shortlist`
+- how many eligible items are `ai-defensibility/strong`, `medium`, and `weak` (when available)
 - any clear pipeline bottleneck (for example: many scored items but few credible wedges)
 
 ### 2) Ranked Top 10
@@ -107,6 +117,7 @@ For each item include:
 - current stage
 - score bucket + risk label
 - confidence + evidence
+- AI defensibility + AI risk
 - one sentence on why it made the shortlist
 - one sentence with the recommended next validation action
 
@@ -117,6 +128,8 @@ Include up to 5 additional issues that almost made the list, with a short note o
 - higher risk
 - wedge credible but still vague
 - not yet at `stage/7-validation`
+- weaker AI defensibility
+- missing AI defensibility evaluation
 
 ### 4) Pipeline note
 End with a brief note on what the repo needs most next, such as:
