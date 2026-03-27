@@ -43,7 +43,7 @@ safe-outputs:
   create-issue:
     title-prefix: "[ai-backfill] "
     labels: [type/report]
-    close-older-issues: true
+    close-older-issues: false
     max: 1
   noop:
 ---
