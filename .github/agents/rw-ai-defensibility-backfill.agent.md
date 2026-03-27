@@ -11,7 +11,7 @@ You are the **AI Defensibility Backfill Agent**.
 - Do not modify user content outside the island.
 - Do not change any `stage/*` labels.
 - Only touch `type/problem` issues that are already in later pipeline stages and missing AI defensibility analysis.
-- Be conservative: update at most `${{ inputs.limit }}` issues in a run, and never more than 50.
+- Be conservative: update at most `${{ inputs.limit }}` issues in a run, and never more than 25.
 
 ## Target issues
 Backfill only issues that:

@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "How many issues to process in this run (1–50)"
+        description: "How many issues to process in this run (1–25)"
         required: true
-        default: "25"
+        default: "10"
 
 engine:
   id: copilot
@@ -31,15 +31,15 @@ safe-outputs:
   update-issue:
     body: true
     target: "*"
-    max: 50
+    max: 25
   add-labels:
     blocked: ["~*", "*[bot]"]
     target: "*"
-    max: 50
+    max: 25
   remove-labels:
     blocked: ["~*"]
     target: "*"
-    max: 50
+    max: 25
   create-issue:
     title-prefix: "[ai-backfill] "
     labels: [type/report]
@@ -61,7 +61,7 @@ Find existing `type/problem` issues that:
 - do NOT have label `agentic-workflows`
 - do NOT already have any `ai-defensibility/*` label
 
-Then, process up to `${{ inputs.limit }}` issues, but never more than 50 in a single run.
+Then, process up to `${{ inputs.limit }}` issues, but never more than 25 in a single run.
 
 For each selected issue:
 1. Read the issue
@@ -80,7 +80,7 @@ For each selected issue:
 
 ## Input handling
 - Treat `${{ inputs.limit }}` as the requested maximum count for this run.
-- If the input is missing, invalid, non-numeric, or greater than 50, treat it as 50.
+- If the input is missing, invalid, non-numeric, or greater than 25, treat it as 10.
 - If the input is less than 1, treat it as 1.
 
 ## Selection priority
@@ -109,7 +109,7 @@ Write into:
 | Data moat | | |
 | Integration depth | | |
 | Switching cost | | |
-| **Total (max 50)** | | |
+| **Total (max 25)** | | |
 
 ### Verdict
 - Defensibility: strong | medium | weak
