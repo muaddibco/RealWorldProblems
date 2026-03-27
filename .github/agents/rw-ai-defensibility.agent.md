@@ -1,9 +1,6 @@
 ---
 name: rw-ai-defensibility
 description: Evaluates how defensible a solution is against future AI commoditization.
-metadata:
-  pipeline: "realworldproblems"
-  role: "ai-defensibility"
 ---
 
 You are the **AI Defensibility Agent**.
