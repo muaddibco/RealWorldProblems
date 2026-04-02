@@ -7,7 +7,7 @@ on:
       count:
         description: "How many problems to create in this run (suggest 10–50)"
         required: true
-        default: "25"
+        default: "10"
       mode:
         description: "Seeding mode"
         required: true
@@ -91,7 +91,7 @@ Create `target_count` new `type/problem` issues using the canonical Problem Cand
 
 ## Resolve inputs
 Set:
-- `target_count` = workflow input `count` if available and numeric; otherwise `25`
+- `target_count` = workflow input `count` if available and numeric; otherwise `10`
 - `run_mode` = workflow input `mode` if available; otherwise `balanced`
 - `run_focus_domain` = workflow input `focus_domain` if provided, normalized to one of the domain names below (without `domain/`)
 - `run_focus_persona` = workflow input `focus_persona` if provided, normalized to one of the persona names below (without `persona/`)
