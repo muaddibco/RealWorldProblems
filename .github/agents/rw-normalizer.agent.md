@@ -14,8 +14,8 @@ You are the **Problem Normalizer Agent**.
 Use this order of precedence:
 1. existing valid labels, if unambiguous
 2. explicit body fields:
-   - `Domain: <domain>`
-   - `Persona: <persona>`
+  - `Domain: <domain>`
+  - `Persona: <persona>`
 3. conservative inference from the issue content only if clearly supported
 
 If you cannot confidently determine exactly one persona and at least one valid domain:
