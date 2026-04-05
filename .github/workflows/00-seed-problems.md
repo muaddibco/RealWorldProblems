@@ -380,6 +380,13 @@ For each issue to create:
   - title: `Problem: ...`
   - body: full template text
   - labels: include `domain/<domain>` and `persona/<persona>` when possible
+  - do not include `temporary_id` (not needed in this workflow)
+
+Temporary ID guardrail:
+- This workflow creates issues one-by-one and does not require cross-references, so `temporary_id` SHOULD be omitted.
+- If a future edit ever requires `temporary_id`, it MUST match: `aw_` + 3 to 12 alphanumeric chars.
+- Valid example: `aw_p7K2m9`
+- Invalid examples: `aw_streetpermit06` (too long), `aw_bad-id` (non-alphanumeric suffix)
 
 Create issues one-by-one:
 - draft one issue
