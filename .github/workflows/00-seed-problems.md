@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       count:
-        description: "How many problems to create in this run (suggest 10–30)"
+        description: "How many problems to create in this run (suggest 10–25)"
         required: true
-        default: "25"
+        default: "10"
       mode:
         description: "Seeding mode"
         required: true
