@@ -21,7 +21,7 @@ on:
         required: false
         default: ""
       focus_persona:
-        description: "If mode=persona_focus, use e.g. consumer | employee | smb-owner"
+        description: "If mode=persona_focus, use e.g. consumer | employee | family-parent | student | smb-owner"
         required: false
         default: ""
       include_regulated:
@@ -45,14 +45,18 @@ on:
         description: "Avoid clusters that appeared in the last N days"
         required: true
         default: "45"
+      recent_scan_limit:
+        description: "Approximate number of recent visible problem issues to scan before seeding"
+        required: true
+        default: "60"
       max_per_archetype:
         description: "Soft cap per archetype in this run"
         required: true
         default: "2"
-      repo_scan_limit:
-        description: "Approximate number of recent visible problem issues to scan before seeding"
+      max_oversized_attempts:
+        description: "How many oversized GitHub read/search attempts to tolerate before falling back to recent-run avoidance mode"
         required: true
-        default: "180"
+        default: "3"
 
 engine:
   id: copilot
@@ -78,11 +82,11 @@ safe-outputs:
   github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   create-issue:
     labels: [type/problem, stage/0-intake]
-    max: 50
+    max: 25
   noop:
 ---
 
-# Seed problems (coverage-aware, novelty-gated)
+# Seed problems (recent-window, semi-open catalog, one-by-one creation)
 
 Tooling note:
 - Search/read existing issues using GitHub MCP issue tools only.
@@ -93,25 +97,25 @@ Tooling note:
 
 Create **up to** `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md, with each issue explicitly anchored to `Domain + Theme + Subtheme + Archetype`.
 
-The goal is **not** merely to hit count.
+The goal is not merely to hit count.
 The goal is to create the highest-quality, most varied, most non-overlapping set of problems you can create in this run.
 
-If the repo already looks saturated for a candidate space, or if you cannot confidently generate a novel issue for a slot, skip that slot and move on.
 Creating fewer issues is better than creating repetitive issues.
 
 ---
 
-## Stage 1 — coverage scan (MANDATORY)
+## Stage 1 — recent-window saturation scan (MANDATORY)
 
 Before drafting any issue:
 
 1. Scan recent visible `type/problem` issues in the repo.
-   - Scan up to `${{ inputs.repo_scan_limit }}` recent visible problem issues.
-   - If fewer than `${{ inputs.repo_scan_limit }}` visible problem issues are available, scan all visible ones.
-   - Prefer the most recent visible issues first, because recent clustering matters more than old coverage.
+   - Scan a recent window only, not the full repo.
+   - Prefer the most recent visible issues first.
+   - Scan up to `${{ inputs.recent_scan_limit }}` recent visible problem issues when feasible.
+   - Pay special attention to issues created in the last `${{ inputs.avoid_recent_days }}` days.
    - Build the scan from GitHub MCP issue-tool results directly, not from shell/temp-file parsing.
 
-2. Build an internal coverage map of:
+2. Build an internal recent-window map of:
    - domain counts
    - persona counts
    - theme counts
@@ -120,12 +124,22 @@ Before drafting any issue:
    - obvious saturated clusters
 
 3. Pay extra attention to:
-   - issues created in the last `${{ inputs.avoid_recent_days }}` days
    - issues created by recent runs of RW: Seed Problems
    - repeated `domain + theme + subtheme` reuse
    - repeated “same shape, different noun” patterns
+   - recent issues created on the same calendar day
 
-Treat the recent repo as a landscape to avoid crowding, not just a duplicate database.
+### Oversized-output fallback
+If GitHub issue listing/search repeatedly returns oversized output:
+- tolerate at most `${{ inputs.max_oversized_attempts }}` oversized attempts total
+- then stop broad scanning
+- switch to **recent-run avoidance mode**
+
+In recent-run avoidance mode:
+- use the issues you have already seen as the current saturation map
+- avoid domains/themes/subthemes visibly touched by the latest runs you have already inspected
+- rely on finalist-specific duplicate checks for each candidate
+- do NOT keep thrashing on broader repo reads
 
 ### Saturation heuristics
 Treat a space as **high-risk / saturated** if any of the following is true in the scanned visible set:
@@ -134,11 +148,7 @@ Treat a space as **high-risk / saturated** if any of the following is true in th
 - same `persona + archetype` appears 4+ times
 - same `domain + theme + subtheme` appears repeatedly in recent issues
 - same failure pattern appears repeatedly with only noun swaps
-  - examples:
-    - “missed deadline → reminder app”
-    - “status unclear → tracker”
-    - “documents scattered → vault”
-    - “promised refund/credit → follow-up tracker”
+- same likely product shape keeps appearing as a reminder / tracker / log app
 
 When a space is saturated, prefer a different theme, subtheme, or archetype instead of making a slightly renamed variant.
 
@@ -147,8 +157,6 @@ When a space is saturated, prefer a different theme, subtheme, or archetype inst
 ## Stage 2 — rotation with dark-space preference
 
 ### Domain list (canonical order)
-Use this exact order as the baseline sequence; wrap around as needed:
-
 1. admin-bureaucracy
 2. finance
 3. health
@@ -163,8 +171,6 @@ Use this exact order as the baseline sequence; wrap around as needed:
 12. travel
 
 ### Persona list (canonical order)
-Use this exact order as the baseline sequence; wrap around as needed:
-
 1. consumer
 2. employee
 3. family-parent
@@ -174,8 +180,6 @@ Use this exact order as the baseline sequence; wrap around as needed:
 7. senior
 
 ### Archetype list (canonical order)
-Each created issue must be anchored to exactly one of these archetypes:
-
 1. deadline-window-lapse
 2. status-opacity
 3. evidence-proof-trail
@@ -204,32 +208,21 @@ For i = 1..count:
 - Use `focus_persona` for all items if provided; otherwise fallback to balanced.
 - Rotate domain and archetype with the same dark-space preference.
 
-### Caps
-Enforce these as soft caps:
-- No domain appears more than `ceil(count / #Domains) + 1`
-- No persona appears more than `ceil(count / #Personas) + 1`
-- No archetype appears more than `${{ inputs.max_per_archetype }}` times **until every archetype has been used once when feasible**
-
-If `${{ inputs.count }}` is greater than `#archetypes * max_per_archetype`, allow only the **least-used** archetypes to exceed the cap by at most +1.
-
 ### Theme catalog rule (applies to all modes)
-- The domain catalog is a **preferred exploration scaffold**, not a closed whitelist.
+- The domain catalog is a preferred exploration scaffold, not a closed whitelist.
 - For each generated problem, the agent should first try to anchor the problem to:
   - exactly one catalog theme from the chosen domain
-  - and, if the catalog supports it, exactly one catalog subtheme within that theme
-- The agent **may** use an off-catalog theme or subtheme when the catalog does not adequately represent a strong candidate space.
+  - exactly one catalog subtheme within that theme
+- The agent may use an off-catalog theme or subtheme when the catalog does not adequately represent a strong candidate space.
 - Off-catalog choices are allowed only when they are:
   - materially distinct from existing catalog entries
   - not just renamed synonyms of existing themes/subthemes
   - clearly grounded in a concrete failure moment
-- If the output looks like a near-duplicate of an earlier output in the same run, regenerate.
-
----
 
 ### Theme selection and rotation (within a domain)
 For each generated item:
 - Prefer the next underused catalog theme for the chosen domain.
-- If the catalog includes subthemes, prefer the next underused subtheme within that theme.
+- Prefer the next underused subtheme within that theme.
 - Do not force strict round-robin if doing so would create a weaker or more repetitive problem.
 - Use the catalog to improve coverage, not to override judgment.
 
@@ -256,11 +249,29 @@ When using an off-catalog entry:
 - prefer the minimum new structure needed to express the problem clearly
 
 Soft cap:
-- no more than 20% of created issues in one run should use off-catalog themes/subthemes unless the visible repo landscape strongly suggests the catalog is missing major areas
+- no more than 20% of created issues in one run should use off-catalog themes/subthemes unless the recent visible landscape strongly suggests the catalog is missing major areas
+
+### Caps
+Enforce these as soft caps:
+- No archetype appears more than `${{ inputs.max_per_archetype }}` times unless count pressure truly requires it
+- Avoid repeating the same `domain + theme + subtheme` in one run
+- Avoid repeating the same `persona + archetype` pattern in one run unless later slots remain clearly novel
 
 ---
 
 ## Stage 3 — theme + subtheme + archetype pairing
+
+Each issue must be anchored to:
+- exactly **one domain theme**
+- exactly **one subtheme** within that theme
+- exactly **one archetype**
+
+The final problem must clearly reflect all three.
+
+Definitions:
+- `Theme` = the broader activity or failure area inside the domain
+- `Subtheme` = the narrower situation within that theme
+- `Archetype` = the underlying problem shape
 
 ### Natural-fit rule (MANDATORY)
 Reject a candidate if the chosen `Theme + Subtheme` does not describe the problem naturally.
@@ -276,34 +287,6 @@ If that sentence sounds strained, overly abstract, or mismatched to the actual f
 Do not backfit taxonomy just to fill a matrix slot.
 A naturally-classified problem is better than a forced catalog fit.
 
-Each issue must be anchored to:
-- exactly **one domain theme**
-- exactly **one subtheme** within that theme
-- exactly **one archetype**
-
-The final problem must clearly reflect all three.
-
-Definitions:
-- `Theme` = the broader activity or failure area inside the domain
-- `Subtheme` = the narrower situation within that theme
-- `Archetype` = the underlying problem shape
-
-Example:
-- theme = `refunds-reimbursements-and-credits`
-- subtheme = `promised refund not arriving`
-- archetype = `status-opacity`
-
-Good output:
-- a problem about a person repeatedly checking whether a promised refund was issued, with no clear status and no reliable next step
-
-Weak output:
-- a generic “refund tracker” with no sharp failure moment
-- a problem that reflects the theme but not the chosen subtheme
-- a problem that reflects the theme and subtheme but collapses the archetype into a vague reminder app
-
-Do not let `Subtheme` become a synonym for the issue title.
-Use it to make the problem more specific and less repetitive.
-
 ---
 
 ## Stage 4 — shortlist before create (MANDATORY)
@@ -316,7 +299,7 @@ For each slot, do this internally before creating anything:
    - failure moment
    - current workaround
    - primary object of work
-   - cadence/frequency
+   - cadence / frequency
 3. Reject any candidate that:
    - crowds a saturated cluster
    - looks like a noun-swapped variant of an existing issue
@@ -338,9 +321,9 @@ Maintain an internal reject list for the current run.
 If a candidate is rejected as a near-duplicate, do not circle back into the same nearby idea space again in this run.
 
 Do not finalize the full batch first and create later.
-The required loop is:
 
-- choose slot
+The required loop is:
+- choose one slot
 - shortlist
 - final duplicate check
 - immediately create that issue
@@ -389,14 +372,6 @@ Reject candidates that are basically:
 - same likely product shape
 - only the noun changed
 
-Examples to reject:
-- “parents miss school form deadlines”
-- “students miss conference deadlines”
-- “employees miss ESPP windows”
-- “homeowners miss tax appeal windows”
-
-These are only acceptable together if the trigger, workflow, stakes, and workaround are materially different enough to pass the novelty gate.
-
 ---
 
 ## Stage 6 — recent-run suppression
@@ -426,17 +401,6 @@ Apply these suppressions unless the candidate is unusually strong and clearly di
 - still reject exact or thin variants
 
 ---
-
-## Catalog maintenance behavior
-Treat the catalog as incomplete by default.
-
-When a strong off-catalog candidate is used:
-- create the issue normally
-- include `Catalog status: off-catalog` in the issue body
-- make the naming specific enough that a future catalog update can absorb it cleanly
-
-Do not invent off-catalog entries casually.
-Use them to capture real blind spots, not to bypass the catalog whenever it is inconvenient.
 
 ## Safe outputs (MANDATORY)
 
@@ -507,14 +471,12 @@ For each created issue:
 ### Labels
 - Must include: `type/problem`, `stage/0-intake`
 - SHOULD include: `domain/<domain>`, `persona/<persona>`
-- If variable labels cannot be added at creation time, still include the `Domain:` and `Persona:` lines in the body
 
 ---
 
 ## Quality constraints
 
 Reject low-signal issues.
-Do not treat the catalog as a creative limit; treat it as a coverage tool.
 
 ### Do NOT create
 - vague “stress / productivity / organization” problems without a concrete failure moment
@@ -541,6 +503,7 @@ Do not treat the catalog as a creative limit; treat it as a coverage tool.
 
 Before creating a finalist, search existing visible problem issues using:
 - persona
+- domain
 - theme
 - subtheme
 - core verb
@@ -548,12 +511,6 @@ Before creating a finalist, search existing visible problem issues using:
 - 1–2 distinctive nouns
 
 Search both broad and narrow variants.
-
-Examples:
-- `"property tax appeal deadline homeowner"`
-- `"conference abstract submission missed PhD"`
-- `"contractor license verification insurance claim"`
-- `"therapy authorization expired session cancelled"`
 
 If a visible issue matches the same:
 - theme
@@ -567,24 +524,10 @@ reject it and choose a different finalist.
 ---
 
 ## Catalog themes by domain (non-exhaustive)
+
 These lists are intentionally non-exhaustive.
 They are the default map for exploration, not the full boundary of allowed problem spaces.
 Prefer them first, but allow off-catalog discovery when justified by a clearly stronger candidate.
-Use this catalog instead of flat theme-only lists.
-
-Selection rules:
-- Each seeded issue must choose exactly:
-  - 1 `Domain`
-  - 1 `Theme`
-  - 1 `Subtheme`
-  - 1 `Archetype`
-- `Theme` should define the activity or failure area.
-- `Subtheme` should define the narrower situation.
-- Avoid producing multiple issues from the same `domain + theme` in one run unless count pressure requires it and novelty still passes.
-- Prefer underused themes and subthemes from recent visible issues.
-
-Use catalog entries whenever they fit naturally.
-If they do not, the agent may introduce a narrowly-scoped off-catalog theme or subtheme under the rules above.
 
 ### admin-bureaucracy
 
