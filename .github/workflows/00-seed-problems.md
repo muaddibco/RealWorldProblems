@@ -1,13 +1,12 @@
 ---
 name: "RW: Seed Problems"
 on:
-  # schedule: every 4h
   workflow_dispatch:
     inputs:
       count:
-        description: "How many problems to create in this run (suggest 10–50)"
+        description: "How many problems to create in this run (suggest 10–30)"
         required: true
-        default: "10"
+        default: "25"
       mode:
         description: "Seeding mode"
         required: true
@@ -28,11 +27,32 @@ on:
       include_regulated:
         description: "Allow regulated-ish problems (health/finance/kids) in output"
         required: true
-        default: "true"
+        default: "false"
         type: choice
         options:
           - "false"
           - "true"
+      novelty_mode:
+        description: "How aggressively to avoid nearby problem shapes"
+        required: true
+        default: "balanced"
+        type: choice
+        options:
+          - conservative
+          - balanced
+          - exploratory
+      avoid_recent_days:
+        description: "Avoid clusters that appeared in the last N days"
+        required: true
+        default: "45"
+      max_per_archetype:
+        description: "Soft cap per archetype in this run"
+        required: true
+        default: "2"
+      repo_scan_limit:
+        description: "Approximate number of recent visible problem issues to scan before seeding"
+        required: true
+        default: "180"
 
 engine:
   id: copilot
@@ -51,6 +71,7 @@ tools:
   github:
     toolsets: [issues]
     read-only: true
+    min-integrity: none
 
 safe-outputs:
   staged: false
@@ -61,120 +82,66 @@ safe-outputs:
   noop:
 ---
 
-# Seed problems (survival-oriented, diversity-constrained)
+# Seed problems (coverage-aware, novelty-gated)
 
 Tooling note:
-- Search/read existing issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
-- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `noop` exactly once with reason `missing GitHub read tools` and stop.
+- Search/read existing issues using GitHub MCP issue tools only.
+- Do NOT use `gh`, `curl`, shell scraping, or fake JSON/NDJSON output.
+- If GitHub read tools are unavailable in the model tool list, emit `noop` once and stop.
 
-## Objective
-Generate new `type/problem` issues that are:
-1. Novel relative to existing open problems
-2. Likely to survive downstream gates:
-   - software-fit/yes or software-fit/partial
-   - stronger score bands
-   - wedge/credible
-   - eventual validation
-3. Still diverse across domains, personas, and themes
+Create **up to** `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md, with each issue explicitly anchored to `Domain + Theme + Subtheme + Archetype`.
 
-Do not optimize for diversity alone.
-Prefer problems with:
-- a concrete failure moment
-- recurring pain
-- a visible manual workaround
-- a plausible software wedge
-- non-macro scope
-- everyday user relevance
+The goal is **not** merely to hit count.
+The goal is to create the highest-quality, most varied, most non-overlapping set of problems you can create in this run.
 
-Create `target_count` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md, augmented by the required fields below.
+If the repo already looks saturated for a candidate space, or if you cannot confidently generate a novel issue for a slot, skip that slot and move on.
+Creating fewer issues is better than creating repetitive issues.
 
-## Resolve inputs
-Set:
-- `target_count` = workflow input `count` if available and numeric; otherwise `10`
-- `run_mode` = workflow input `mode` if available; otherwise `balanced`
-- `run_focus_domain` = workflow input `focus_domain` if provided, normalized to one of the domain names below (without `domain/`)
-- `run_focus_persona` = workflow input `focus_persona` if provided, normalized to one of the persona names below (without `persona/`)
+---
 
-## Strict input enforcement
-Do not silently ignore invalid focus inputs.
+## Stage 1 — coverage scan (MANDATORY)
 
-- If `run_mode=domain_focus` and `run_focus_domain` is empty or invalid, emit `noop` exactly once with a short reason and stop.
-- If `run_mode=persona_focus` and `run_focus_persona` is empty or invalid, emit `noop` exactly once with a short reason and stop.
-- If `run_mode=domain_focus`, every created issue MUST use that exact domain.
-- If `run_mode=persona_focus`, every created issue MUST use that exact persona.
-- Do not fall back to `balanced` when a focus mode was explicitly requested.
+Before drafting any issue:
 
-## Backlog / volume guardrails
-Before creating anything:
+1. Scan recent visible `type/problem` issues in the repo.
+   - Scan up to `${{ inputs.repo_scan_limit }}` recent visible problem issues.
+   - If fewer than `${{ inputs.repo_scan_limit }}` visible problem issues are available, scan all visible ones.
+   - Prefer the most recent visible issues first, because recent clustering matters more than old coverage.
+2. Build an internal coverage map of:
+   - domain counts
+   - persona counts
+   - theme counts
+   - subtheme counts
+   - archetype counts
+   - obvious saturated clusters
+3. Pay extra attention to:
+   - issues created in the last `${{ inputs.avoid_recent_days }}` days
+   - issues created by recent runs of RW: Seed Problems
+   - repeated `domain + theme + subtheme` reuse
+   - repeated “same shape, different noun” patterns
 
-1. Count open issues labeled `type/problem`.
-   - If count is `500` or more, create nothing, emit `noop` exactly once, and stop.
+Treat the recent repo as a landscape to avoid crowding, not just a duplicate database.
 
-2. Count open issues labeled either:
-   - `type/problem` + `stage/0-intake`
-   - `type/problem` + `stage/1-normalized`
-   Let `early_backlog` be the sum.
-   Let `backlog_limit = max(150, 5 * target_count)`.
-   - If `early_backlog >= backlog_limit`, create nothing, emit `noop` exactly once with a short reason, and stop.
+### Saturation heuristics
+Treat a space as **high-risk / saturated** if any of the following is true in the scanned visible set:
+- same `domain + archetype` appears 4+ times
+- same `domain + theme` appears 3+ times
+- same `persona + archetype` appears 4+ times
+- same failure pattern appears repeatedly with only noun swaps
+  - examples:
+    - “missed deadline → reminder app”
+    - “status unclear → tracker”
+    - “documents scattered → vault”
+    - “promised refund/credit → follow-up tracker”
 
-## Pre-generation scans (MANDATORY)
-Before choosing topics, do all of the following:
+When a space is saturated, prefer a different theme, subtheme, or archetype instead of making a slightly renamed variant.
 
-### A. Validation coverage scan
-- Read all open `type/problem` + `stage/7-validation` issues.
-- Cluster them into covered topic areas by similarity of:
-  - core problem / JTBD
-  - theme
-  - trigger / failure moment
-  - persona / context
-- Build a short internal list of "already covered" clusters.
+---
 
-### B. Pipeline feedback scan
-Search recent issues that indicate what tends to survive or fail:
-- successful-ish signals:
-  - `score/top-10`
-  - `score/top-50`
-  - `wedge/credible`
-  - `stage/7-validation`
-- failure signals:
-  - `archive/not-software`
-  - `archive/no-wedge`
+## Stage 2 — rotation with dark-space preference
 
-Use this to build a lightweight internal map:
-- areas that repeatedly survive
-- areas that repeatedly fail software fit
-- areas that repeatedly fail wedge quality
-
-Directional judgment is enough; perfect statistics are not required.
-
-## Seeding strategy: mixed allocation
-Split the run into two lanes:
-
-- `likely_winner_slots = ceil(target_count * 0.70)`
-- `exploratory_slots = target_count - likely_winner_slots`
-
-### likely_winner lane
-Prefer candidates that are more likely to survive downstream:
-- concrete failure moment
-- clear recurring pain
-- obvious time/money/risk reduction
-- realistic software leverage
-- lightweight validation path
-- not heavily dependent on deep partnerships or compliance-heavy operations unless clearly justified
-
-Use pipeline feedback scan results to bias toward themes/personas/domains that have shown better downstream survival.
-
-### exploratory lane
-Prefer under-covered areas:
-- domains/themes/personas underrepresented in open `stage/7-validation`
-- adjacent but still distinct spaces
-- novel combinations that are meaningfully different from already-covered clusters
-
-Exploration is for breadth, but still keep quality constraints.
-
-## Domain list (balanced mode rotation order)
-Use this exact order for `balanced` mode; wrap around as needed:
+### Domain list (canonical order)
+Use this exact order as the baseline sequence; wrap around as needed:
 
 1. admin-bureaucracy
 2. finance
@@ -189,8 +156,8 @@ Use this exact order for `balanced` mode; wrap around as needed:
 11. security-privacy
 12. travel
 
-## Persona list (rotation order)
-Use this order; wrap around as needed:
+### Persona list (canonical order)
+Use this exact order as the baseline sequence; wrap around as needed:
 
 1. consumer
 2. employee
@@ -200,202 +167,1299 @@ Use this order; wrap around as needed:
 6. smb-owner
 7. senior
 
-## Rotation rules
-Use zero-based slot indexing for clarity:
-- `slot_index = 0..target_count-1`
+### Archetype list (canonical order)
+Each created issue must be anchored to exactly one of these archetypes:
 
-### balanced
+1. deadline-window-lapse
+2. status-opacity
+3. evidence-proof-trail
+4. coordination-handoff
+5. verification-mismatch
+6. scheduling-booking
+7. comparison-selection
+8. exception-recovery
+9. ongoing-upkeep-drift
+10. fragmented-records
+
+### Mode rules
+
+#### balanced
+For i = 1..count:
+- start from the canonical domain order
+- start from the canonical persona order
+- start from the canonical archetype order
+- then adjust toward underrepresented combinations if the default slot is saturated, too recent, or too similar to prior issues in this run
+
+#### domain_focus
+- Use `focus_domain` for all items if provided; otherwise fallback to balanced.
+- Rotate persona and archetype with the same dark-space preference.
+
+#### persona_focus
+- Use `focus_persona` for all items if provided; otherwise fallback to balanced.
+- Rotate domain and archetype with the same dark-space preference.
+
+### Caps
+Enforce these as soft caps:
+- No domain appears more than `ceil(count / #Domains) + 1`
+- No persona appears more than `ceil(count / #Personas) + 1`
+- No archetype appears more than `${{ inputs.max_per_archetype }}` times **until every archetype has been used once when feasible**
+
+If `${{ inputs.count }}` is greater than `#archetypes * max_per_archetype`, allow only the **least-used** archetypes to exceed the cap by at most +1.
+
+### Theme catalog rule (applies to all modes)
+- The domain catalog is a **preferred exploration scaffold**, not a closed whitelist.
+- For each generated problem, the agent should first try to anchor the problem to:
+  - exactly one catalog theme from the chosen domain
+  - and, if the catalog supports it, exactly one catalog subtheme within that theme
+- The agent **may** use an off-catalog theme or subtheme when the catalog does not adequately represent a strong candidate space.
+- Off-catalog choices are allowed only when they are:
+  - materially distinct from existing catalog entries
+  - not just renamed synonyms of existing themes/subthemes
+  - clearly grounded in a concrete failure moment
+- If the output looks like a near-duplicate of an earlier output in the same run, regenerate.
+
+---
+
+### Theme selection and rotation (within a domain)
+For each generated item:
+- Prefer the next underused catalog theme for the chosen domain.
+- If the catalog includes subthemes, prefer the next underused subtheme within that theme.
+- Do not force strict round-robin if doing so would create a weaker or more repetitive problem.
+- Use the catalog to improve coverage, not to override judgment.
+
+Priority order:
+1. strongest novel candidate within the chosen domain
+2. underused catalog theme / subtheme
+3. off-catalog candidate, only if clearly better than catalog options
+
+### Off-catalog discipline
+The agent may introduce:
+- `Theme (off-catalog): <name>`
+- or `Subtheme (off-catalog): <name>`
+
+only when all of the following are true:
+1. no existing catalog entry fits the candidate well without distortion
+2. the candidate is not a near-synonym of an existing catalog entry
+3. the candidate passes duplicate and novelty checks
+4. the candidate has a specific context, workaround, and failure moment
+
+When using an off-catalog entry:
+- keep the name short and concrete
+- avoid broad umbrella labels
+- avoid inventing taxonomy for its own sake
+- prefer the minimum new structure needed to express the problem clearly
+
+Soft cap:
+- no more than 20% of created issues in one run should use off-catalog themes/subthemes unless the visible repo landscape strongly suggests the catalog is missing major areas
+
+---
+
+## Stage 3 — theme + subtheme + archetype pairing
+
+Each issue must be anchored to:
+- exactly **one domain theme**
+- exactly **one subtheme** within that theme
+- exactly **one archetype**
+
+The final problem must clearly reflect all three.
+
+Definitions:
+- `Theme` = the broader activity or failure area inside the domain
+- `Subtheme` = the narrower situation within that theme
+- `Archetype` = the underlying problem shape
+
+Example:
+- theme = `refunds-reimbursements-and-credits`
+- subtheme = `promised refund not arriving`
+- archetype = `status-opacity`
+
+Good output:
+- a problem about a person repeatedly checking whether a promised refund was issued, with no clear status and no reliable next step
+
+Weak output:
+- a generic “refund tracker” with no sharp failure moment
+- a problem that reflects the theme but not the chosen subtheme
+- a problem that reflects the theme and subtheme but collapses the archetype into a vague reminder app
+
+Do not let `Subtheme` become a synonym for the issue title.
+Use it to make the problem more specific and less repetitive.
+
+---
+
+## Stage 4 — shortlist before create (MANDATORY)
+
+For each slot, do this internally before creating anything:
+
+1. Draft **3 candidate ideas** for the slot.
+2. Make sure the 3 candidates are meaningfully distinct on at least one of:
+   - trigger moment
+   - failure moment
+   - current workaround
+   - primary object of work
+   - cadence/frequency
+3. Reject any candidate that:
+   - crowds a saturated cluster
+   - looks like a noun-swapped variant of an existing issue
+   - is too generic
+   - is only a “tracker/reminder” with no sharp failure moment
+4. Pick the strongest surviving candidate.
+5. Search the repo again specifically for that finalist.
+6. Only then create the issue.
+
+### Subtheme discipline
 For each slot:
-- domain = Domains[slot_index mod #Domains]
-- persona = Personas[slot_index mod #Personas]
-- If persona would repeat the immediately previous persona, advance persona by +1 with wrap.
+- generate candidates from the chosen `theme`
+- force the 3 internal candidates to come from **different subthemes** whenever possible
+- do not create two issues from the same `domain + theme + subtheme` in one run unless the run size makes it unavoidable and novelty still clearly passes
+- if a subtheme repeatedly collapses into the same product shape as nearby issues, reject that subtheme for the current run and choose another
 
-Enforce soft diversity caps:
-- No persona appears more than `ceil(target_count / #Personas) + 1` times
-- No domain appears more than `ceil(target_count / #Domains) + 1` times
+Maintain an internal reject list for the current run.
+If a candidate is rejected as a near-duplicate, do not circle back into the same nearby idea space again in this run.
 
-### domain_focus
-- Domain = `run_focus_domain` for every item
-- Rotate personas using the Persona list rules above
-- Do not use balanced domain rotation
+---
 
-### persona_focus
-- Persona = `run_focus_persona` for every item
-- Rotate domains using the Domain list rules above
-- Do not use balanced persona rotation
+## Stage 5 — novelty gate (STRICT)
 
-## Theme rotation rule
-Applies to all modes.
+A candidate is acceptable only if it is materially different from the nearest visible existing issue.
 
-- Each generated problem must be anchored to exactly one theme from the chosen domain.
-- The JTBD, context, pain, workaround, and failure moment must clearly reflect that theme.
-- If output looks like a near-duplicate of an earlier theme output in the same run, regenerate.
+### Minimum novelty rule
+A new candidate must differ from the nearest similar visible issue on at least **2** of these axes:
+1. trigger moment
+2. failure moment
+3. current workaround
+4. primary object being managed / coordinated / verified
+5. cadence or recurrence pattern
+6. persona
+7. domain context
 
-Within a domain, rotate across themes before reusing the same theme unless the reuse is clearly for a meaningfully different persona + context + failure moment.
+### Subtheme overlap rule
+If a candidate shares the same `domain + theme + subtheme` as a visible nearby issue, reject it unless it differs on at least **3** of these axes:
+1. trigger moment
+2. failure moment
+3. current workaround
+4. primary object being managed / coordinated / verified
+5. cadence or recurrence pattern
+6. persona
+7. stakes / consequences
 
-## Duplicate avoidance (MANDATORY)
-Before creating each issue:
+If it still appears to have the same likely product shape, reject it anyway.
 
-### 1. Phrase search
-Search existing issues for 3–6 key phrases derived from:
-- persona
-- theme
-- core verb / action
-- failure moment
-- desired outcome
-
-Examples:
-- `refund tracking delayed reimbursement employee`
-- `renewal reminder permit late fee senior`
-- `returns deadline label status consumer`
-
-### 2. Cluster comparison
-Compare candidate against:
-- open `type/problem` issues
-- open `stage/7-validation` clusters
-- recent archived failure patterns if highly similar
-
-### 3. Candidate fingerprint
-Create an internal fingerprint with:
+### Stricter rule for high-risk spaces
+If the candidate shares the same:
 - domain
-- theme
 - persona
-- trigger
-- failure moment
-- desired outcome
-- current workaround
+- and archetype
 
-Treat a candidate as too similar and skip/regenerate if it matches the same underlying problem shape even when wording differs.
+with a nearby visible issue, it must differ on at least **3** axes above or be rejected.
 
-A near-duplicate is one where most of the following match:
-- same domain + theme
-- same persona or very close equivalent
-- same trigger
-- same failure moment
-- same desired outcome
-- same workaround style
+### Explicit anti-pattern
+Reject candidates that are basically:
+- same pain shape
+- same workaround shape
+- same likely product shape
+- only the noun changed
 
-## Attempt policy
-- Keep generating until you create exactly `target_count` issues, unless blocked by duplicate avoidance or the guardrails above.
-- Use `attempt_limit = max(20, 3 * target_count)`.
-- If the limit is reached:
-  - if 0 issues were created, emit `noop` exactly once with a short reason
-  - if 1 or more issues were created, stop after the created issues and do not emit extra prose
+Examples to reject:
+- “parents miss school form deadlines”
+- “students miss conference deadlines”
+- “employees miss ESPP windows”
+- “homeowners miss tax appeal windows”
+
+These are only acceptable together if the trigger, workflow, stakes, and workaround are materially different enough to pass the novelty gate.
+
+---
+
+## Stage 6 — recent-run suppression
+
+Avoid creating issues that are too close to problems created in the last `${{ inputs.avoid_recent_days }}` days, with recency-weighted caution for repeated `domain + theme + subtheme` clusters.
+
+Apply these suppressions unless the candidate is unusually strong and clearly distinct:
+- same `domain + theme + subtheme`
+- same `domain + archetype`
+- same `subtheme + failure moment`
+- same `persona + workaround shape`
+- same likely product shape or same “solution gravity” toward a reminder/tracker/log app
+
+### novelty_mode behavior
+
+#### conservative
+- strongly avoid recent clusters
+- require the stricter novelty rule whenever anything feels adjacent
+- prefer underrepresented domains/personas over high-confidence but nearby ideas
+
+#### balanced
+- avoid recent clusters unless the candidate is clearly sharper and different
+- use the default novelty rules above
+
+#### exploratory
+- allow closer adjacency only when the candidate opens a genuinely new wedge, trigger, or failure mode
+- still reject exact or thin variants
+
+---
+
+## Catalog maintenance behavior
+Treat the catalog as incomplete by default.
+
+When a strong off-catalog candidate is used:
+- create the issue normally
+- include the off-catalog label in the issue body
+- make the naming specific enough that a future catalog update can absorb it cleanly
+
+Do not invent off-catalog entries casually.
+Use them to capture real blind spots, not to bypass the catalog whenever it is inconvenient.
+
+## Safe outputs (MANDATORY)
+
+Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
+
+- For each issue to create, CALL `create_issue` with:
+  - title: `Problem: ...`
+  - body: full template text
+  - labels: include `domain/<domain>` and `persona/<persona>` when possible
+- Create between 1 and `${{ inputs.count }}` issues.
+- If you create 0 issues for any reason, CALL `noop` exactly once with a short reason.
+
+Create issues **one-by-one**:
+- shortlist
+- final duplicate check
+- immediately call `create_issue`
+
+Do not draft all issues first and create later.
+
+---
 
 ## include_regulated handling
+
 If `include_regulated=false`:
-- Avoid problems that require handling:
-  - medical diagnosis or medical advice
+- avoid problems that require handling:
+  - medical diagnoses
   - financial account credentials
   - children’s sensitive personal data
-  - compliance-heavy regulated operations
-- “Light” finance/admin problems are still okay:
-  - reminders
-  - tracking
-  - paperwork
-  - document organization
-  - neutral journaling
-  - general coordination
+  - compliance-heavy clinical or legal workflows
+- light admin/finance/health paperwork is still okay if the product shape is clearly non-clinical and non-sensitive
 
 If `include_regulated=true`:
-- Regulated-ish areas are allowed, but still prefer operationally lighter problems unless the problem remains clearly software-led and narrow in scope.
+- regulated-ish problems are allowed
+- still avoid giving medical, legal, or financial advice
+- frame the issue as tracking, coordination, verification, logistics, documentation, or workflow support
+
+---
 
 ## Per-issue requirements
+
 For each created issue:
 
 ### Title
 - `Problem: <7–12 words>`
 
 ### Body must include
-- JTBD one-liner:
-  - `When …, I want …, so I can …`
-- Context & frequency
-- Pain / stakes
-- Current workaround
-- Failure moment
-- Evidence strength
-- Why software may help
-
-### Evidence strength
-Use exactly one:
-- `observed`
-- `inferred-strong`
-- `inferred-weak`
-- `analogy`
-
-### Failure moment
-State the concrete moment the user loses:
-- time
-- money
-- access
-- confidence
-- coordination
-- deadline
-- safety margin
-
-Examples:
-- missed deadline
-- paid a late fee
-- forgot a required document
-- lost time in a queue
-- couldn’t coordinate pickup
-- submitted the wrong form
-- missed a refund window
-- got stuck with unclear status
+- `**JTBD:**` one-liner in the format “When…, I want…, so I can…”
+- `---`
+- `**Context & frequency:**`
+- `**Pain / stakes:**`
+- `**Current workaround:**`
+- `**Failure moment:**`
+- `**Evidence strength:**` one of:
+  - observed
+  - inferred-strong
+  - inferred-light
+- `**Why software may help:**`
+- `---`
+- `Domain: <domain>`
+- `Theme: <theme>`
+- `Subtheme: <subtheme>`
+- `Catalog status: catalog` or `Catalog status: off-catalog`
+- `Persona: <persona>`
+- `Archetype: <archetype>`
 
 ### Labels
-- Must include:
-  - `type/problem`
-  - `stage/0-intake`
-- SHOULD include:
-  - `domain/<domain>`
-  - `persona/<persona>`
+- Must include: `type/problem`, `stage/0-intake`
+- SHOULD include: `domain/<domain>`, `persona/<persona>`
+- If variable labels cannot be added at creation time, still include the `Domain:` and `Persona:` lines in the body
 
-### Body metadata
-Always include both in the issue body:
-- `Domain: <domain>`
-- `Persona: <persona>`
+---
 
-These fields are the canonical fallback source for the normalizer if labels are missing or inconsistent.
+## Quality constraints
 
-## Quality constraints (avoid low-signal issues)
-Do not create:
-- vague abstractions like “stress”, “productivity”, “better wellness” without a concrete recurring context
-- macro topics like war, politics, inflation, geopolitics
-- problems that are mainly opinions, broad social commentary, or impossible to validate narrowly
-- items that only make sense as giant platforms with no narrow wedge
+Reject low-signal issues.
+Do not treat the catalog as a creative limit; treat it as a coverage tool.
 
-Prefer:
-- a narrow, identifiable user
-- a repeatable trigger
-- a clear failure moment
-- a visible current workaround
-- a problem that could plausibly be solved with software before requiring major services/ops
+### Do NOT create
+- vague “stress / productivity / organization” problems without a concrete failure moment
+- macro problems (war, politics, inflation, society-wide complaints)
+- feature requests disguised as problems
+- ideas whose only plausible solution is “another dashboard”
+- ideas whose only pain is mild inconvenience
+- ideas that are just generic reminders without a sharp consequence
 
-## Safe outputs (MANDATORY)
-Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
+### Prefer
+- clear moment of failure
+- concrete money/time/coordination loss
+- specific persona in a specific situation
+- visible workaround already in use
+- software-fit without heroic integrations
+- problem shapes that feel different from recent seeds
+- problems that are specific at the `theme + subtheme` level, not just the domain level
+- Prefer catalog-fit problems when strong, but prefer a stronger off-catalog problem over a weak catalog-compliant one.
 
-For each issue to create:
-- CALL `create_issue` with:
-  - title: `Problem: ...`
-  - body: full template text
-  - labels: include `domain/<domain>` and `persona/<persona>` when possible
-  - do not include `temporary_id` (not needed in this workflow)
+---
 
-Temporary ID guardrail:
-- This workflow creates issues one-by-one and does not require cross-references, so `temporary_id` SHOULD be omitted.
-- If a future edit ever requires `temporary_id`, it MUST match: `aw_` + 3 to 12 alphanumeric chars.
-- Valid example: `aw_p7K2m9`
-- Invalid examples: `aw_streetpermit06` (too long), `aw_bad-id` (non-alphanumeric suffix)
+## Search guidance for duplicate checks
 
-Create issues one-by-one:
-- draft one issue
-- immediately call `create_issue`
-- then move to the next issue
+Before creating a finalist, search existing visible problem issues using:
+- persona
+- theme
+- subtheme
+- core verb
+- failure moment
+- 1–2 distinctive nouns
 
-Do not spend tokens drafting all issues before creating any.
 
-If you create 0 issues for any reason:
-- CALL `noop` exactly once with a short reason
+Search both broad and narrow variants.
 
-Always emit safe outputs or `noop`.
+Examples:
+- `"property tax appeal deadline homeowner"`
+- `"conference abstract submission missed PhD"`
+- `"contractor license verification insurance claim"`
+- `"therapy authorization expired session cancelled"`
+
+If a visible issue matches the same:
+- theme
+- subtheme
+- JTBD structure
+- failure moment
+- and likely solution gravity
+
+reject it and choose a different finalist.
+
+---
+
+## Catalog themes by domain (non-exhaustive)
+These lists are intentionally non-exhaustive.
+They are the default map for exploration, not the full boundary of allowed problem spaces.
+Prefer them first, but allow off-catalog discovery when justified by a clearly stronger candidate.
+Use this catalog instead of flat theme-only lists.
+
+Selection rules:
+- Each seeded issue must choose exactly:
+  - 1 `Domain`
+  - 1 `Theme`
+  - 1 `Subtheme`
+  - 1 `Archetype`
+- `Theme` should define the activity or failure area.
+- `Subtheme` should define the narrower situation.
+- Avoid producing multiple issues from the same `domain + theme` in one run unless count pressure requires it and novelty still passes.
+- Prefer underused themes and subthemes from recent visible issues.
+
+Use catalog entries whenever they fit naturally.
+If they do not, the agent may introduce a narrowly-scoped off-catalog theme or subtheme under the rules above.
+
+### admin-bureaucracy
+
+1. `identity-and-record-matching`
+   - name / transliteration mismatch across agencies
+   - date-of-birth / address mismatch
+   - duplicate person records
+   - updating changed personal details everywhere
+
+2. `eligibility-and-prerequisites`
+   - checking eligibility before applying
+   - discovering missing prerequisites too late
+   - understanding accepted proof types
+   - sequencing dependent requirements correctly
+
+3. `applications-and-submissions`
+   - incomplete form submission
+   - attachment format / size rejection
+   - required-field ambiguity
+   - re-entering the same data across forms
+
+4. `appointments-and-in-person-visits`
+   - booking scarce slots
+   - rescheduling after a missed appointment
+   - preparing all required documents for the visit
+   - coordinating companion / translator / escort attendance
+
+5. `status-tracking-and-follow-up`
+   - request stuck with no status visibility
+   - unclear next step after submission
+   - chasing updates across channels
+   - knowing when to escalate
+
+6. `payments-fees-and-penalties`
+   - paying the right fee for the right process
+   - proving payment to the agency
+   - avoiding late penalties
+   - reconciling payment receipt with case status
+
+7. `renewals-and-validity-windows`
+   - renewal windows opening and closing
+   - expired document discovered during another process
+   - overlapping validity periods
+   - coordinating renewal dependencies
+
+8. `rejections-appeals-and-corrections`
+   - understanding why something was rejected
+   - correcting and resubmitting
+   - appealing within the allowed window
+   - assembling supporting proof for reconsideration
+
+9. `cross-agency-coordination`
+   - one office waiting on another office
+   - carrying the same document to multiple agencies
+   - inconsistent instructions across institutions
+   - proving one agency action to another
+
+10. `certification-and-official-proof`
+   - certified copies / notarization / apostille
+   - proof of residence / family status / identity
+   - official translations
+   - proving authenticity of documents
+
+11. `address-residency-and-local-records`
+   - address change propagation
+   - local registration / deregistration
+   - proof of residence for service eligibility
+   - mismatched locality records
+
+12. `representation-and-delegation`
+   - applying on behalf of a family member
+   - power-of-attorney paperwork
+   - guardian / caregiver authorization
+   - proxy status proof across institutions
+
+---
+
+### finance
+
+1. `billing-and-payment-obligations`
+   - bill due-date confusion
+   - autopay failures
+   - partial payment tracking
+   - avoiding fees from timing mismatches
+
+2. `refunds-reimbursements-and-credits`
+   - promised refund not arriving
+   - expense reimbursement follow-up
+   - store / airline / service credit tracking
+   - proving eligibility for reimbursement
+
+3. `disputes-chargebacks-and-fraud`
+   - disputing incorrect charges
+   - collecting proof for chargebacks
+   - tracking bank / card issuer responses
+   - recovering after suspected fraud
+
+4. `subscriptions-renewals-and-lapses`
+   - accidental renewals
+   - losing access after lapse
+   - overlapping subscriptions
+   - cancellation timing and proof
+
+5. `taxes-filings-and-benefits`
+   - collecting tax documents
+   - eligibility for deductions / credits
+   - filing deadline dependencies
+   - status follow-up on tax-related submissions
+
+6. `household-money-coordination`
+   - splitting irregular shared expenses
+   - reconciling who paid what
+   - handling family budget exceptions
+   - remembering agreed money rules
+
+7. `cashflow-and-timing-mismatch`
+   - expenses due before income arrives
+   - moving money across accounts on time
+   - avoiding overdrafts from poor timing visibility
+   - syncing payment calendars with pay cycles
+
+8. `income-payroll-and-payout-errors`
+   - paycheck discrepancy resolution
+   - contractor payout follow-up
+   - missing bonuses / commissions / reimbursements
+   - proving hours / deliverables for payment
+
+9. `claims-warranties-and-coverage-costs`
+   - filing a claim with financial consequences
+   - proving purchase / ownership
+   - tracking deductible / reimbursement implications
+   - timing coverage-related renewals
+
+10. `financial-document-gathering`
+   - collecting statements for applications
+   - finding past invoices / receipts
+   - assembling proof of income
+   - preparing records for audits / reviews
+
+11. `debt-and-repayment-organization`
+   - tracking multiple repayment schedules
+   - avoiding missed installments
+   - prioritizing debts with different consequences
+   - following up on settlement / hardship requests
+
+12. `price-comparison-and-commitment-decisions`
+   - comparing offers with different fee structures
+   - spotting hidden costs
+   - deciding when to lock in a rate / plan
+   - tracking price commitments before expiry
+
+---
+
+### health
+
+1. `appointments-referrals-and-authorizations`
+   - finding the right appointment type
+   - referral requirement discovered late
+   - prior authorization status tracking
+   - coordinating approval before care
+
+2. `care-plan-follow-through`
+   - remembering next steps after a visit
+   - tracking ordered tests / consults
+   - completing multi-step care tasks
+   - knowing what is still pending
+
+3. `labs-imaging-and-results`
+   - preparing correctly for tests
+   - following up on missing results
+   - comparing results across providers
+   - bringing the right records to the next visit
+
+4. `records-documents-and-forms`
+   - medical record requests
+   - transferring records between providers
+   - filling health-admin forms
+   - keeping vaccination / clearance / exam documents organized
+
+5. `medications-and-supplies`
+   - refill timing
+   - supply replenishment for ongoing use
+   - coordinating prescriptions across providers
+   - handling pharmacy substitution / availability issues
+
+6. `caregiver-and-family-coordination`
+   - multiple people supporting one patient
+   - handoff after appointments
+   - sharing instructions accurately
+   - covering care when the main caregiver is unavailable
+
+7. `insurance-billing-and-claims`
+   - denied claim follow-up
+   - billing code / amount mismatch
+   - proving eligibility / coverage
+   - reconciling provider bill vs insurer response
+
+8. `visit-prep-and-post-visit-recovery`
+   - preparing questions and documents
+   - arranging transport / companion help
+   - tracking recovery instructions after discharge
+   - making sure follow-up tasks happen
+
+9. `care-access-and-scheduling-friction`
+   - long waitlists
+   - reschedule openings
+   - coordinating care across providers with conflicting calendars
+   - managing missed / cancelled appointments
+
+10. `home-care-and-routine-logistics`
+   - daily routine adherence
+   - home monitoring record-keeping
+   - care tasks across different times of day
+   - coordinating temporary substitute caregivers
+
+11. `care-transitions-and-special-events`
+   - hospital discharge to home
+   - starting care in a new clinic / city / insurer
+   - temporary travel while maintaining care routines
+   - transferring responsibility between family members
+
+12. `neutral-health-tracking`
+   - journaling symptoms / side effects neutrally
+   - tracking triggers or context around episodes
+   - spotting missing logs needed for appointments
+   - organizing observations for a future visit
+
+---
+
+### work
+
+1. `approvals-reviews-and-signoffs`
+   - waiting on approvals
+   - unclear approver ownership
+   - lost context in review loops
+   - following up without spamming
+
+2. `handoffs-and-cross-team-coordination`
+   - task dropped between teams
+   - dependency blocked by another function
+   - unclear handoff ownership
+   - missing information during transfer
+
+3. `meetings-decisions-and-follow-through`
+   - action items disappearing after meetings
+   - decision memory getting lost
+   - prep work not completed on time
+   - attendees not aligned on next steps
+
+4. `documents-knowledge-and-versioning`
+   - finding the latest document
+   - conflicting versions in circulation
+   - knowledge trapped in chats / folders
+   - missing context for new joiners
+
+5. `scheduling-staffing-and-shifts`
+   - shift swaps and coverage gaps
+   - interview scheduling friction
+   - vacation / leave coordination
+   - on-call / rota confusion
+
+6. `onboarding-training-and-certification`
+   - onboarding tasks scattered across systems
+   - required training completion drift
+   - certification / access expiry
+   - unclear readiness for role responsibilities
+
+7. `access-permissions-and-procurement`
+   - waiting for system access
+   - permission request ambiguity
+   - purchasing request status opacity
+   - missing prerequisites for equipment / software
+
+8. `expense-reimbursement-and-internal-admin`
+   - expense claims missing proof
+   - policy confusion during submission
+   - late reimbursement follow-up
+   - recurring internal form friction
+
+9. `customer-vendor-and-partner-coordination`
+   - contractor / vendor follow-up
+   - external dependency causing internal delay
+   - unclear status between organizations
+   - documenting commitments from outside parties
+
+10. `incident-exception-and-recovery`
+   - unexpected work disruption
+   - triage ownership confusion
+   - recovery checklist gaps
+   - lessons / actions not captured after the event
+
+11. `field-ops-and-distributed-work`
+   - technician / field worker coordination
+   - location-specific prep requirements
+   - route + task sequencing issues
+   - proof of visit / completion collection
+
+12. `status-reporting-and-repeat-communication`
+   - repeating the same updates to many stakeholders
+   - assembling status from scattered systems
+   - weekly reporting overhead
+   - inconsistent status wording across audiences
+
+---
+
+### home
+
+1. `maintenance-and-preventive-upkeep`
+   - recurring maintenance schedules
+   - seasonal home prep
+   - forgetting low-frequency tasks
+   - tracking what was last done and by whom
+
+2. `repairs-vendors-and-service-calls`
+   - comparing repair options
+   - coordinating appointments with service providers
+   - following up on unfinished work
+   - tracking quotes, warranties, and callbacks
+
+3. `utilities-outages-and-service-accounts`
+   - opening / closing accounts
+   - outage follow-up and updates
+   - meter / billing discrepancies
+   - proving account ownership / address details
+
+4. `household-items-storage-and-findability`
+   - not knowing where items are stored
+   - duplicate purchases because items cannot be found
+   - seasonal item rotation
+   - keeping manuals / spare parts tied to items
+
+5. `renting-landlord-and-building-admin`
+   - tracking landlord requests
+   - building management communication
+   - lease-related deadlines
+   - documenting home issues and follow-up
+
+6. `home-insurance-and-damage-events`
+   - documenting incidents for claims
+   - gathering proof of ownership / value
+   - repair coordination after damage
+   - claim status follow-up
+
+7. `cleaning-chores-and-role-coordination`
+   - recurring chores unevenly distributed
+   - unclear ownership of tasks
+   - prep for guests / events
+   - exceptions when one person is unavailable
+
+8. `packages-deliveries-and-home-access`
+   - delivery timing uncertainty
+   - package handoff coordination
+   - missed deliveries
+   - access instructions for workers / couriers
+
+9. `safety-security-and-emergency-readiness`
+   - safety check routines
+   - emergency supply rotation
+   - household contact / utility information readiness
+   - incident prep and recovery checklists
+
+10. `renovation-projects-and-change-orders`
+   - managing multi-step home projects
+   - contractor timeline drift
+   - scope changes and cost tracking
+   - dependencies between trades / workers
+
+11. `pet-and-dependent-care-at-home`
+   - feeding / medicine / routine coordination
+   - sitter / walker handoff notes
+   - temporary coverage planning
+   - keeping supplies stocked
+
+12. `decluttering-disposal-and-replacement`
+   - deciding what to keep / donate / toss
+   - special disposal rules
+   - replacing items after disposal
+   - maintaining a record of what left the home
+
+---
+
+### mobility
+
+1. `commute-planning-and-disruption-recovery`
+   - recurring route planning
+   - disruption fallback choices
+   - deciding when to leave earlier
+   - preserving commitments when transport fails
+
+2. `parking-tolls-and-fines`
+   - parking session expiry
+   - toll / violation follow-up
+   - proving payment or entitlement
+   - appeal timing and evidence
+
+3. `vehicle-maintenance-and-validity`
+   - service schedules
+   - inspection / registration renewal
+   - warranty and repair-history tracking
+   - coordinating maintenance around daily use
+
+4. `breakdowns-accidents-and-roadside-events`
+   - roadside assistance coordination
+   - accident proof gathering
+   - insurance / repair handoff after an incident
+   - temporary mobility fallback while vehicle is unavailable
+
+5. `public-transport-and-pass-management`
+   - pass renewal / expiry
+   - disruption alerts that need action
+   - transfer timing uncertainty
+   - proving fare / discount eligibility
+
+6. `family-pickup-and-shared-ride-coordination`
+   - school pickup exceptions
+   - ride-sharing responsibilities
+   - custody / two-household transport coordination
+   - backup driver arrangements
+
+7. `accessibility-and-special-constraint-routing`
+   - stroller / wheelchair / mobility constraints
+   - elevator / station access uncertainty
+   - route suitability under special needs
+   - choosing the least-friction trip option
+
+8. `ride-cost-and-option-comparison`
+   - taxi / transit / parking tradeoffs
+   - recurring trip cost comparison
+   - choosing between speed and predictability
+   - comparing multimodal options
+
+9. `shared-vehicle-and-asset-coordination`
+   - household vehicle sharing
+   - company car / pool car booking
+   - handoff of keys / passes / charging cards
+   - condition / fuel / charge visibility between users
+
+10. `ev-charging-and-range-logistics`
+   - planning charging around commitments
+   - charger availability uncertainty
+   - home vs public charging tradeoffs
+   - tracking charging accessories / cards / apps
+
+11. `ownership-documents-and-admin`
+   - title / insurance / registration paperwork
+   - proving ownership during transactions
+   - updating records after sale / purchase
+   - document readiness during travel or incidents
+
+12. `lost-items-and-in-transit-recovery`
+   - items left on transport
+   - tracking recovery attempts
+   - proving ownership of lost items
+   - coordinating pickup / return after recovery
+
+---
+
+### shopping
+
+1. `comparison-and-selection`
+   - comparing similar products with different tradeoffs
+   - choosing among confusing bundles / plans
+   - deciding with incomplete specs
+   - narrowing options for a specific constraint
+
+2. `size-fit-and-compatibility`
+   - sizing uncertainty across brands
+   - compatibility with existing gear / appliances
+   - replacement-part fit verification
+   - avoiding wrong-format purchases
+
+3. `purchasing-proof-and-records`
+   - keeping receipts accessible
+   - matching order to proof of purchase
+   - preserving warranty-relevant details
+   - finding proof later for returns / claims
+
+4. `delivery-preorder-and-availability`
+   - preorder status opacity
+   - partial shipment confusion
+   - restock timing uncertainty
+   - deciding whether to wait, switch, or cancel
+
+5. `returns-exchanges-and-recovery`
+   - return window management
+   - exchange vs refund decision tracking
+   - partial return complications
+   - proving condition / eligibility during disputes
+
+6. `warranty-claims-and-aftercare`
+   - warranty coverage interpretation
+   - repair vs replacement path
+   - claim evidence gathering
+   - following up with manufacturer / retailer
+
+7. `recurring-rebuy-and-household-replenishment`
+   - running out of essentials
+   - timing reorders across many items
+   - balancing bulk vs freshness / storage
+   - remembering preferred versions of repeat buys
+
+8. `shared-shopping-and-list-coordination`
+   - duplicate buys by family members
+   - unclear ownership of shopping tasks
+   - conflict between preferences on the same list
+   - handling substitutions when one person shops for another
+
+9. `gift-purchasing-and-event-buying`
+   - remembering constraints and preferences
+   - tracking gift ideas over time
+   - timing deliveries around events
+   - exchanges / returns after gifting
+
+10. `marketplace-and-seller-trust`
+   - comparing sellers, not just products
+   - spotting risky listings
+   - tracking promises made by sellers
+   - documenting issues for disputes
+
+11. `used-refurbished-and-replacement-buying`
+   - verifying condition before purchase
+   - comparing repair vs replacement economics
+   - checking missing accessories / documentation
+   - tracking serial / model details for fit
+
+12. `household-stock-vs-waste-tradeoffs`
+   - overbuying because visibility is poor
+   - buying too little and running out
+   - perishable vs non-perishable planning
+   - storage-capacity-aware shopping decisions
+
+---
+
+### education
+
+1. `assignments-deadlines-and-submissions`
+   - missing due dates across platforms
+   - attachment / format submission issues
+   - unclear rubric or submission method
+   - late-work exception handling
+
+2. `study-planning-and-exam-prep`
+   - balancing multiple exams
+   - planning review cadence
+   - spotting what has not been covered yet
+   - adjusting after falling behind
+
+3. `notes-materials-and-resource-findability`
+   - scattered class resources
+   - confusion over latest study material
+   - losing access to key notes
+   - organizing material by topic and assessment
+
+4. `group-work-and-collaboration`
+   - task ownership ambiguity
+   - missed handoffs in group projects
+   - version confusion in shared work
+   - contribution evidence during disputes
+
+5. `school-admin-and-family-communication`
+   - parent notices getting lost
+   - permissions / forms / signatures
+   - absence paperwork
+   - event / trip / school-day logistics
+
+6. `applications-admissions-and-enrollment`
+   - application component tracking
+   - recommendation / document collection
+   - enrollment step dependencies
+   - decision / waitlist follow-up
+
+7. `financial-aid-scholarships-and-fees`
+   - scholarship deadline coordination
+   - fee payment proof
+   - document gathering for aid
+   - status opacity in aid processing
+
+8. `accommodations-support-and-special-needs`
+   - arranging accommodations on time
+   - proving eligibility for support
+   - renewing support documentation
+   - coordinating accommodations across courses / systems
+
+9. `attendance-schedule-and-routine-friction`
+   - timetable changes
+   - missed sessions from schedule confusion
+   - balancing travel / work / school constraints
+   - keeping recurring academic routines stable
+
+10. `extracurriculars-clubs-and-activities`
+   - registration windows
+   - schedule conflicts between activities
+   - parent / student / coach coordination
+   - tracking requirements and equipment
+
+11. `certifications-testing-and-registration`
+   - exam registration readiness
+   - external certification prerequisites
+   - test-day document preparation
+   - retake / validity window tracking
+
+12. `feedback-progress-and-intervention`
+   - seeing patterns across teacher feedback
+   - spotting missing or late grades
+   - deciding when support is needed
+   - coordinating remediation or catch-up plans
+
+---
+
+### family
+
+1. `calendar-coordination-and-conflict-resolution`
+   - overlapping family commitments
+   - last-minute schedule changes
+   - remembering which plan is current
+   - resolving conflicts between priorities
+
+2. `child-activity-and-school-logistics`
+   - pickup / drop-off coordination
+   - equipment / permission / event readiness
+   - rotating responsibilities between adults
+   - handling exceptions and cancellations
+
+3. `caregiving-and-coverage`
+   - elder-care coverage gaps
+   - babysitting / respite coordination
+   - backup care when routines break
+   - transferring care instructions between people
+
+4. `co-parenting-and-multi-household-coordination`
+   - schedule handoffs between homes
+   - document / clothing / equipment transfer
+   - shared decision follow-through
+   - exception handling during travel / sickness
+
+5. `household-decisions-and-memory`
+   - forgetting what was agreed
+   - repeated discussions because decisions are not recorded
+   - keeping rationale for future reference
+   - tracking unresolved family decisions
+
+6. `documents-records-and-official-family-proof`
+   - keeping certificates / IDs / school records organized
+   - retrieving the right record quickly
+   - knowing what must be updated after life changes
+   - preparing family documents for applications or travel
+
+7. `roles-chores-and-responsibility-balance`
+   - uneven invisible labor
+   - unclear ownership of recurring tasks
+   - temporary swaps when someone is unavailable
+   - accountability without over-managing
+
+8. `events-celebrations-and-gift-coordination`
+   - remembering milestones
+   - planning across preferences and budgets
+   - coordinating contributions from multiple relatives
+   - managing post-event cleanup and returns
+
+9. `family-money-and-shared-obligations`
+   - who pays for what in a family context
+   - tracking reimbursements between relatives
+   - budget exceptions for kids / elders / events
+   - aligning spending with family rules
+
+10. `routines-boundaries-and-agreements`
+   - screen-time / bedtime / household-rule consistency
+   - keeping agreements visible
+   - handling exceptions fairly
+   - maintaining routines across caregivers or households
+
+11. `emergency-readiness-and-contact-visibility`
+   - knowing who to reach and when
+   - keeping critical medical / school / contact info current
+   - temporary guardianship / pickup authorizations
+   - emergency plan coordination
+
+12. `intergenerational-support-and-communication`
+   - coordinating help for older relatives
+   - translating / relaying information between generations
+   - remembering preferences and constraints
+   - reducing confusion in multi-person family support
+
+---
+
+### food
+
+1. `meal-planning-and-decision-friction`
+   - deciding what to eat under time constraints
+   - matching meals to available ingredients
+   - balancing variety with routine
+   - planning for different schedules in one household
+
+2. `pantry-fridge-and-freezer-visibility`
+   - not knowing what is already at home
+   - duplicate buying
+   - item rotation by freshness
+   - using freezer inventory intentionally
+
+3. `shopping-to-meal-execution`
+   - turning meal ideas into a practical shopping list
+   - substituting missing ingredients
+   - adjusting plans after items are unavailable
+   - syncing purchases with when food will actually be cooked
+
+4. `leftovers-waste-and-expiry-management`
+   - forgetting leftovers
+   - expiring produce / dairy / prepared food
+   - deciding what can still be used
+   - planning meals around high-risk items
+
+5. `dietary-preferences-and-restrictions`
+   - feeding multiple people with different restrictions
+   - allergy / intolerance-safe planning
+   - tracking accepted substitutions
+   - restaurant or guest meal coordination with constraints
+
+6. `school-work-and-on-the-go-food-logistics`
+   - lunch prep for repeated weekdays
+   - snack / meal packing under time pressure
+   - remembering supplies for different routines
+   - coordinating food responsibilities across caregivers
+
+7. `hosting-guests-and-events`
+   - planning menus for mixed preferences
+   - timing prep across many dishes
+   - scaling quantities
+   - tracking what guests are bringing
+
+8. `batch-cooking-and-replenishment`
+   - planning what to cook in bulk
+   - portioning and labeling
+   - knowing when to restock staples
+   - syncing prep with freezer capacity and household demand
+
+9. `restaurant-takeout-and-order-accuracy`
+   - choosing among options quickly
+   - remembering repeat preferences
+   - checking order completeness / correctness
+   - coordinating group ordering without confusion
+
+10. `cost-vs-convenience-tradeoffs`
+   - deciding when convenience is worth paying for
+   - comparing homemade vs store-bought paths
+   - balancing healthy intent with time reality
+   - making budget-aware food choices without constant recalculation
+
+11. `nutrition-and-routine-consistency`
+   - maintaining a simple eating routine
+   - spotting skipped meals / patterns
+   - coordinating food with activity / school / work constraints
+   - keeping tracking lightweight enough to sustain
+
+12. `holiday-seasonal-and-special-occasion-food`
+   - special menu planning
+   - ingredient sourcing for limited-time items
+   - timing prep around traditions or guests
+   - managing leftovers and storage after big meals
+
+---
+
+### security-privacy
+
+1. `passwords-credentials-and-access-readiness`
+   - keeping account access recoverable
+   - tracking where credentials matter most
+   - rotating weak or reused credentials
+   - preparing trusted access for emergencies
+
+2. `account-recovery-and-lockout-prevention`
+   - backup code readiness
+   - recovery method drift after phone/email changes
+   - proving account ownership during recovery
+   - family or team recovery handoff planning
+
+3. `device-update-and-protection-drift`
+   - delayed updates across many devices
+   - unclear protection status
+   - coordinating updates for less technical family members
+   - reducing disruption while staying current
+
+4. `phishing-scams-and-suspicious-contact-triage`
+   - suspicious SMS / calls / emails
+   - deciding what is safe to ignore or escalate
+   - keeping proof of incidents
+   - helping family members handle suspicious contact safely
+
+5. `identity-theft-and-post-incident-recovery`
+   - response steps after suspected compromise
+   - documenting what was affected
+   - tracking notifications / freezes / follow-up
+   - coordinating recovery across multiple services
+
+6. `privacy-settings-and-data-exposure`
+   - checking high-risk privacy settings
+   - visibility drift after app / platform changes
+   - understanding what is publicly exposed
+   - maintaining a lightweight review routine
+
+7. `secure-document-sharing-and-redaction`
+   - sending sensitive documents safely
+   - sharing only the necessary fields
+   - keeping an audit trail of what was shared
+   - reusing safe redaction / sharing practices
+
+8. `permissions-and-shared-access-review`
+   - who has access to what
+   - stale shared access
+   - family / team admin roles getting messy
+   - periodic review of delegated permissions
+
+9. `backup-readiness-and-restoration-confidence`
+   - not knowing what is actually backed up
+   - missing important categories of data
+   - restoration uncertainty before a real incident
+   - scheduling lightweight checks
+
+10. `device-handover-resale-and-offboarding`
+   - preparing devices for sale / transfer
+   - removing accounts and personal data fully
+   - tracking accessories / serial numbers / reset status
+   - handing a device to a relative safely
+
+11. `child-elder-and-dependent-digital-safety`
+   - helping less technical users stay safe
+   - keeping guidance simple and repeatable
+   - balancing oversight with autonomy
+   - coordinating safety settings across caregivers
+
+12. `privacy-rights-and-follow-up-requests`
+   - requesting data deletion / export
+   - tracking responses from companies
+   - proving the request scope and timing
+   - following up when the process stalls
+
+---
+
+### travel
+
+1. `pre-departure-readiness`
+   - packing by trip type
+   - departure checklist timing
+   - last-mile prep before leaving home
+   - avoiding forgotten essentials for early departures
+
+2. `documents-visas-and-entry-requirements`
+   - passport / visa readiness
+   - destination-specific entry rule verification
+   - family document dependencies
+   - gathering supporting proof for travel admin
+
+3. `bookings-itinerary-and-confirmation-findability`
+   - scattered reservations
+   - version confusion after changes
+   - keeping one usable itinerary view
+   - retrieving key confirmations quickly during travel
+
+4. `changes-cancellations-and-rebooking-recovery`
+   - missed or changed connections
+   - cancellation follow-up
+   - choosing among rebooking options under pressure
+   - keeping commitments aligned after travel disruption
+
+5. `airport-station-and-local-transfer-coordination`
+   - first / last mile planning
+   - transfer timing uncertainty
+   - multi-person arrival coordination
+   - backup options when transport fails
+
+6. `lodging-stay-and-check-in-friction`
+   - check-in instructions buried in messages
+   - arrival-time coordination
+   - exceptions or issues during the stay
+   - proving what was promised vs delivered
+
+7. `trip-money-expenses-and-reimbursement`
+   - splitting travel costs
+   - keeping receipts for work or shared trips
+   - expense categorization while moving
+   - reimbursement follow-up after return
+
+8. `insurance-claims-and-compensation`
+   - deciding when a travel issue is claim-worthy
+   - collecting proof during disruption
+   - tracking claim steps after the trip
+   - compensation follow-up with airlines / providers
+
+9. `group-travel-and-role-coordination`
+   - keeping everyone aligned on timing
+   - task division across travelers
+   - handling partial plan changes for one person
+   - reducing repeated coordination messages
+
+10. `health-accessibility-and-special-needs-travel`
+   - medication / equipment readiness
+   - accessibility constraints in itinerary choices
+   - planning around rest, food, or care routines
+   - keeping essential support details accessible during travel
+
+11. `lost-items-baggage-and-recovery`
+   - baggage status uncertainty
+   - lost item reporting and proof
+   - deciding what to replace immediately
+   - coordinating pickup / return after recovery
+
+12. `post-trip-cleanup-and-follow-through`
+   - expense and receipt cleanup
+   - returning borrowed / rented items
+   - organizing photos / documents / leftover credits
+   - wrapping unresolved travel admin after arrival home
