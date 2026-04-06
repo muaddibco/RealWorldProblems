@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       count:
-        description: "How many problems to create in this run (suggest 10–25)"
+        description: "How many problems to create in this run (recommended 8–12; higher counts reduce novelty discipline)"
         required: true
         default: "10"
       mode:
@@ -86,8 +86,10 @@ safe-outputs:
 
 Tooling note:
 - Search/read existing issues using GitHub MCP issue tools only.
-- Do NOT use `gh`, `curl`, shell scraping, or fake JSON/NDJSON output.
-- If GitHub read tools are unavailable in the model tool list, emit `noop` once and stop.
+- Do NOT use `gh`, `curl`, shell scraping, `python -c`, `/tmp/gh-aw/mcp-payloads/*`, `/tmp/copilot-tool-output*`, `/tmp/gh-aw/agent/*`, or any temp-file parsing to inspect issue data.
+- Do NOT reconstruct coverage maps from shell output or local temp files.
+- Use MCP results directly from `list_issues`, `search_issues`, and `issue_read`.
+- If GitHub read tools are unavailable in the model tool list, CALL `noop` exactly once with a short reason and stop.
 
 Create **up to** `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md, with each issue explicitly anchored to `Domain + Theme + Subtheme + Archetype`.
 
@@ -107,6 +109,8 @@ Before drafting any issue:
    - Scan up to `${{ inputs.repo_scan_limit }}` recent visible problem issues.
    - If fewer than `${{ inputs.repo_scan_limit }}` visible problem issues are available, scan all visible ones.
    - Prefer the most recent visible issues first, because recent clustering matters more than old coverage.
+   - Build the scan from GitHub MCP issue-tool results directly, not from shell/temp-file parsing.
+
 2. Build an internal coverage map of:
    - domain counts
    - persona counts
@@ -114,6 +118,7 @@ Before drafting any issue:
    - subtheme counts
    - archetype counts
    - obvious saturated clusters
+
 3. Pay extra attention to:
    - issues created in the last `${{ inputs.avoid_recent_days }}` days
    - issues created by recent runs of RW: Seed Problems
@@ -127,6 +132,7 @@ Treat a space as **high-risk / saturated** if any of the following is true in th
 - same `domain + archetype` appears 4+ times
 - same `domain + theme` appears 3+ times
 - same `persona + archetype` appears 4+ times
+- same `domain + theme + subtheme` appears repeatedly in recent issues
 - same failure pattern appears repeatedly with only noun swaps
   - examples:
     - “missed deadline → reminder app”
@@ -256,6 +262,20 @@ Soft cap:
 
 ## Stage 3 — theme + subtheme + archetype pairing
 
+### Natural-fit rule (MANDATORY)
+Reject a candidate if the chosen `Theme + Subtheme` does not describe the problem naturally.
+
+The agent must be able to express the fit in one plain-English sentence of this form:
+
+- `This is a <theme> / <subtheme> problem because ...`
+
+If that sentence sounds strained, overly abstract, or mismatched to the actual failure moment:
+- choose a better-fitting theme/subtheme
+- or reject the candidate
+
+Do not backfit taxonomy just to fill a matrix slot.
+A naturally-classified problem is better than a forced catalog fit.
+
 Each issue must be anchored to:
 - exactly **one domain theme**
 - exactly **one subtheme** within that theme
@@ -302,9 +322,10 @@ For each slot, do this internally before creating anything:
    - looks like a noun-swapped variant of an existing issue
    - is too generic
    - is only a “tracker/reminder” with no sharp failure moment
+   - has a forced or unnatural `Theme + Subtheme` fit
 4. Pick the strongest surviving candidate.
 5. Search the repo again specifically for that finalist.
-6. Only then create the issue.
+6. If it still passes novelty and duplicate checks, immediately call `create_issue` for that one issue before planning later slots.
 
 ### Subtheme discipline
 For each slot:
@@ -315,6 +336,15 @@ For each slot:
 
 Maintain an internal reject list for the current run.
 If a candidate is rejected as a near-duplicate, do not circle back into the same nearby idea space again in this run.
+
+Do not finalize the full batch first and create later.
+The required loop is:
+
+- choose slot
+- shortlist
+- final duplicate check
+- immediately create that issue
+- only then move to the next slot
 
 ---
 
@@ -402,7 +432,7 @@ Treat the catalog as incomplete by default.
 
 When a strong off-catalog candidate is used:
 - create the issue normally
-- include the off-catalog label in the issue body
+- include `Catalog status: off-catalog` in the issue body
 - make the naming specific enough that a future catalog update can absorb it cleanly
 
 Do not invent off-catalog entries casually.
@@ -423,8 +453,10 @@ Create issues **one-by-one**:
 - shortlist
 - final duplicate check
 - immediately call `create_issue`
+- only then move to the next slot
 
-Do not draft all issues first and create later.
+Do not draft, finalize, or summarize a full batch before writing any issues.
+If you have completed final checking for one issue, write it immediately.
 
 ---
 
@@ -468,7 +500,7 @@ For each created issue:
 - `Domain: <domain>`
 - `Theme: <theme>`
 - `Subtheme: <subtheme>`
-- `Catalog status: catalog` or `Catalog status: off-catalog`
+- `Catalog status: <catalog|off-catalog>`
 - `Persona: <persona>`
 - `Archetype: <archetype>`
 
@@ -501,6 +533,7 @@ Do not treat the catalog as a creative limit; treat it as a coverage tool.
 - problem shapes that feel different from recent seeds
 - problems that are specific at the `theme + subtheme` level, not just the domain level
 - Prefer catalog-fit problems when strong, but prefer a stronger off-catalog problem over a weak catalog-compliant one.
+- taxonomy that fits naturally in plain English, not labels forced to satisfy rotation
 
 ---
 
@@ -513,7 +546,6 @@ Before creating a finalist, search existing visible problem issues using:
 - core verb
 - failure moment
 - 1–2 distinctive nouns
-
 
 Search both broad and narrow variants.
 
