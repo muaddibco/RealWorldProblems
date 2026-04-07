@@ -99,7 +99,8 @@ jobs:
                   const labels = (subIssue.labels || [])
                     .map((label) => typeof label === 'string' ? label : label?.name)
                     .filter(Boolean);
-                  if (labels.includes(experimentLabel)) return true;
+                  const subIssueState = String(subIssue.state || '').toLowerCase();
+                  if (labels.includes(experimentLabel) && subIssueState !== 'closed') return true;
                 }
 
                 if (subIssues.length < 100) return false;
