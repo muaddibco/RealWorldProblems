@@ -42,6 +42,8 @@ HEADERS = {
     "User-Agent": "rw-reset-to-intake-backfill",
 }
 
+GRAPHQL_URL = (API_URL[:-3] + "graphql") if API_URL.endswith("/v3") else (API_URL + "/graphql")
+
 
 def log(message: str) -> None:
     print(message, flush=True)
@@ -71,6 +73,22 @@ def api_request(method: str, path: str, params: dict[str, Any] | None = None, pa
     except urllib.error.HTTPError as error:
         body = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"{method} {url} failed: HTTP {error.code}: {body}") from error
+
+
+def graphql_request(query: str, variables: dict[str, Any]) -> Any:
+    payload = json.dumps({"query": query, "variables": variables}).encode("utf-8")
+    graphql_headers = {**HEADERS, "Content-Type": "application/json"}
+    request = urllib.request.Request(url=GRAPHQL_URL, data=payload, headers=graphql_headers, method="POST")
+    try:
+        with urllib.request.urlopen(request) as response:
+            raw = response.read()
+            result = json.loads(raw.decode("utf-8"))
+            if "errors" in result:
+                raise RuntimeError(f"GraphQL errors: {result['errors']}")
+            return result.get("data")
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GraphQL POST {GRAPHQL_URL} failed: HTTP {error.code}: {body}") from error
 
 
 def get_issue(issue_number: int) -> dict[str, Any]:
@@ -179,6 +197,24 @@ def close_issue(issue_number: int) -> None:
             raise
 
 
+_DELETE_ISSUE_MUTATION = """
+mutation DeleteIssue($issueId: ID!) {
+  deleteIssue(input: {issueId: $issueId}) {
+    repository {
+      name
+    }
+  }
+}
+"""
+
+
+def delete_issue(issue: dict[str, Any]) -> None:
+    node_id = issue.get("node_id")
+    if not node_id:
+        raise RuntimeError(f"Issue #{issue['number']} has no node_id; cannot delete.")
+    graphql_request(_DELETE_ISSUE_MUTATION, {"issueId": node_id})
+
+
 def reset_parent_issue(issue_number: int, new_body: str) -> None:
     api_request(
         "PATCH",
@@ -235,6 +271,7 @@ def main() -> int:
 
     reset_parents: list[int] = []
     closed_experiments: list[int] = []
+    deleted_experiments: list[int] = []
     skipped_no_marker: list[int] = []
 
     for parent in parent_issues:
@@ -269,8 +306,12 @@ def main() -> int:
             log(f"Parent #{parent_number}: no linked open experiments found")
 
         for experiment_number in sorted(linked_experiments):
+            experiment_issue = open_experiments.get(experiment_number)
             close_issue(experiment_number)
             closed_experiments.append(experiment_number)
+            if experiment_issue is not None:
+                delete_issue(experiment_issue)
+                deleted_experiments.append(experiment_number)
             open_experiments.pop(experiment_number, None)
 
         reset_parent_issue(parent_number, new_body)
@@ -286,6 +327,7 @@ def main() -> int:
         f"- Max issues: `{MAX_ISSUES}`",
         f"- Parents reset: `{len(reset_parents)}`",
         f"- Experiments closed: `{len(closed_experiments)}`",
+        f"- Experiments deleted: `{len(deleted_experiments)}`",
         f"- Skipped because no marker found: `{len(skipped_no_marker)}`",
         "",
     ]
@@ -294,6 +336,8 @@ def main() -> int:
         summary_lines.append(f"- Reset parent issues: {', '.join(f'#{n}' for n in reset_parents)}")
     if closed_experiments:
         summary_lines.append(f"- Closed experiment issues: {', '.join(f'#{n}' for n in closed_experiments)}")
+    if deleted_experiments:
+        summary_lines.append(f"- Deleted experiment issues: {', '.join(f'#{n}' for n in deleted_experiments)}")
     if skipped_no_marker:
         summary_lines.append(f"- Skipped parent issues: {', '.join(f'#{n}' for n in skipped_no_marker)}")
 
