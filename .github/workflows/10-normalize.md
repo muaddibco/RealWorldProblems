@@ -59,6 +59,7 @@ Tooling note:
 ## Responsibilities of this stage
 This stage is responsible for:
 - validating that the originally seeded issue body contains the required seed metadata fields
+- inferring any missing seed metadata fields from the problem description before falling back to `status/needs-info`
 - normalizing the problem into the canonical issue structure
 - ensuring the issue has exactly one `persona/*` label
 - ensuring the issue has 1–3 `domain/*` labels
@@ -75,13 +76,44 @@ Before advancing, inspect the **original seeded issue content** and verify that 
 - `Archetype: <archetype>`
 
 Rules:
-1. These must be present in the seeded issue body itself, not merely inferable from labels or later-added normalized content.
-2. Do **not** count content inside any previously generated workflow island or comment as satisfying this requirement.
+1. If a field is explicitly present in the seeded issue body, use it as the source of truth. Content inside previously generated workflow islands or HTML comments does not count as satisfying this requirement.
+2. If a field is **missing or malformed**, attempt to infer it from the problem description before falling back to `status/needs-info`. See **Seed metadata inference rules** below.
 3. `Catalog status` is valid only if it is exactly:
    - `catalog`
    - `off-catalog`
-4. If any of these six fields are missing, malformed, or ambiguous, add `status/needs-info`, add a short comment listing exactly what is missing or invalid, and do **NOT** change stage.
-5. Do not silently synthesize missing seed metadata into the source issue just to make it pass the gate.
+4. If a field is present but clearly conflicts with the problem narrative, do not override it silently; add `status/needs-info` and a short comment describing the conflict instead.
+5. Inferred values must be written to the normalized island with `(inferred)` appended so they are visible for human review. Do not silently backfill them into the original seeded body.
+
+## Seed metadata inference rules
+
+When any of the six seed metadata fields are absent or malformed, infer them from the problem narrative using the rules below. Use only canonical values from AGENTS.md where applicable.
+
+**Domain**
+- Choose 1–3 domains from the canonical `domain/*` list that best match the problem context.
+- The primary domain becomes the `Domain:` field value; additional ones are added as extra domain labels only.
+
+**Theme**
+- Derive a short free-form thematic grouping (3–6 words) for the general problem category (e.g., `Home maintenance management`, `Personal finance tracking`).
+
+**Subtheme**
+- Derive a narrower free-form focus within the theme (3–6 words) capturing the specific pain point (e.g., `Repair scheduling and follow-up`, `Expense categorisation errors`).
+
+**Catalog status**
+- Default to `off-catalog`.
+- Use `catalog` only when the problem clearly matches a pattern already widely represented in a well-known consumer pain-point catalog.
+- When uncertain, always default to `off-catalog`.
+
+**Persona**
+- Choose exactly one persona from the canonical `persona/*` list that the issue narrative most clearly addresses.
+- If genuinely ambiguous between two or more personas, do **not** infer; add `status/needs-info` instead.
+
+**Archetype**
+- Derive a short free-form archetype label that describes the specific type of user experiencing this pain (e.g., `Overwhelmed homeowner`, `Time-poor professional`, `Cost-conscious parent`).
+- Must be consistent with the inferred or explicit Persona.
+
+### Inference confidence threshold
+- Apply an inferred value only when there is **clear evidence** in the problem narrative.
+- If you cannot confidently infer a field, do not guess; add `status/needs-info` and list the uninferrable fields in the comment.
 
 ## Metadata consistency rules
 When the seeded body includes the required metadata fields:
@@ -113,22 +145,22 @@ Before advancing:
 - if persona is ambiguous, do not guess; add `status/needs-info` and stop
 
 ## If missing required info
-If any of these are still missing, malformed, inconsistent, or unclear after validation:
-- `Domain: <domain>`
-- `Theme: <theme>`
-- `Subtheme: <subtheme>`
-- `Catalog status: <catalog|off-catalog>`
-- `Persona: <persona>`
-- `Archetype: <archetype>`
-- JTBD one-liner
-- Context + frequency
-- Pain / stakes
-- Current workaround
-- persona label
-- domain label
+After attempting inference, if any of the following are still unresolvable with sufficient confidence:
+- `Domain: <domain>` — could not be inferred
+- `Theme: <theme>` — could not be inferred
+- `Subtheme: <subtheme>` — could not be inferred
+- `Catalog status: <catalog|off-catalog>` — could not be inferred
+- `Persona: <persona>` — ambiguous between two or more personas
+- `Archetype: <archetype>` — could not be inferred
+- JTBD one-liner — not present or not derivable
+- Context + frequency — not present or not derivable
+- Pain / stakes — not present or not derivable
+- Current workaround — not present or not derivable
+- persona label — ambiguous
+- domain label — not determinable
 
 Then:
-- Add a short comment listing exactly what’s missing or invalid
+- Add a short comment listing exactly what's missing, invalid, or uninferrable
 - Add label: `status/needs-info`
 - Do NOT change stage
 
