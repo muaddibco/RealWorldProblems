@@ -19,15 +19,14 @@ on:
         type: choice
         options:
           - "stage/0-intake"
-          - "stage/1-triage"
-          - "stage/2-validate"
-          - "stage/3-investigate"
-          - "stage/4-solutioning"
-          - "stage/5-implementation"
-          - "stage/6-review"
-          - "stage/7-release"
-          - "stage/8-monitoring"
-          - "stage/9-archived"
+          - "stage/1-normalized"
+          - "stage/2-deduped"
+          - "stage/3-scored"
+          - "stage/4-solution"
+          - "stage/ai-defensibility"
+          - "stage/5-competitors"
+          - "stage/6-shortlist"
+          - "stage/7-validation"
   # schedule:
   #   - cron: "17 */4 * * *"
 
