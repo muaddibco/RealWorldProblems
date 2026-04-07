@@ -1,0 +1,53 @@
+name: "RW: Reset Problems To Intake (Script)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "single_issue = only that issue; below_issue_id = all qualifying issues with smaller numbers"
+        required: true
+        default: below_issue_id
+        type: choice
+        options:
+          - single_issue
+          - below_issue_id
+      issue_id:
+        description: "Issue number, or threshold issue number when mode=below_issue_id"
+        required: true
+        type: number
+      max_issues:
+        description: "Safety cap for below_issue_id mode (1-50)"
+        required: true
+        default: 25
+        type: number
+
+concurrency:
+  group: rw-reset-to-intake-backfill
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Reset qualifying issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RESET_MODE: ${{ inputs.mode }}
+          TARGET_ISSUE_ID: ${{ inputs.issue_id }}
+          MAX_ISSUES: ${{ inputs.max_issues }}
+        run: python .github/scripts/reset_to_intake.py
