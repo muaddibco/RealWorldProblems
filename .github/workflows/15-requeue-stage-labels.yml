@@ -14,8 +14,20 @@ on:
         default: "25"
       stage_filter:
         description: "Optional exact stage label (e.g. stage/0-intake)"
-        required: false
-        default: ""
+        required: true
+        default: "stage/0-intake"
+        type: choice
+        options:
+          - "stage/0-intake"
+          - "stage/1-triage"
+          - "stage/2-validate"
+          - "stage/3-investigate"
+          - "stage/4-solutioning"
+          - "stage/5-implementation"
+          - "stage/6-review"
+          - "stage/7-release"
+          - "stage/8-monitoring"
+          - "stage/9-archived"
   # schedule:
   #   - cron: "17 */4 * * *"
 
