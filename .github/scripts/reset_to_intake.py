@@ -32,8 +32,8 @@ REPOSITORY = env("GITHUB_REPOSITORY")
 OWNER, REPO = REPOSITORY.split("/", 1)
 
 RESET_MODE = env("RESET_MODE")
+LOWER_ISSUE_ID = max(1, int(float(os.getenv("LOWER_ISSUE_ID", "1"))))
 TARGET_ISSUE_ID = int(float(env("TARGET_ISSUE_ID")))
-MAX_ISSUES = max(1, min(int(float(env("MAX_ISSUES"))), 50))
 
 HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -200,28 +200,31 @@ def write_summary(lines: list[str]) -> None:
 
 
 def select_parent_issues() -> list[dict[str, Any]]:
-    if RESET_MODE not in {"single_issue", "below_issue_id"}:
-        raise RuntimeError("RESET_MODE must be 'single_issue' or 'below_issue_id'.")
+    if RESET_MODE not in {"single_issue", "range_of_issues"}:
+        raise RuntimeError("RESET_MODE must be 'single_issue' or 'range_of_issues'.")
 
     if RESET_MODE == "single_issue":
         issue = get_issue(TARGET_ISSUE_ID)
         return [issue] if qualifies_parent(issue) else []
 
+    if LOWER_ISSUE_ID > TARGET_ISSUE_ID:
+        raise RuntimeError("LOWER_ISSUE_ID must be less than or equal to TARGET_ISSUE_ID.")
+
     parents = list_issues_by_labels(["type/problem", "stage/7-validation"], state="open")
     selected = [
         issue
         for issue in parents
-        if qualifies_parent(issue) and int(issue["number"]) < TARGET_ISSUE_ID
+        if qualifies_parent(issue) and LOWER_ISSUE_ID <= int(issue["number"]) <= TARGET_ISSUE_ID
     ]
     selected.sort(key=lambda issue: int(issue["number"]))
-    return selected[:MAX_ISSUES]
+    return selected
 
 
 def main() -> int:
     log(f"Repository: {REPOSITORY}")
     log(f"Mode: {RESET_MODE}")
+    log(f"Lower issue id: {LOWER_ISSUE_ID}")
     log(f"Target issue id: {TARGET_ISSUE_ID}")
-    log(f"Max issues: {MAX_ISSUES}")
 
     parent_issues = select_parent_issues()
     open_experiments = {
@@ -282,8 +285,8 @@ def main() -> int:
         "",
         f"- Repository: `{REPOSITORY}`",
         f"- Mode: `{RESET_MODE}`",
+        f"- Lower issue id: `{LOWER_ISSUE_ID}`",
         f"- Target issue id: `{TARGET_ISSUE_ID}`",
-        f"- Max issues: `{MAX_ISSUES}`",
         f"- Parents reset: `{len(reset_parents)}`",
         f"- Experiments closed: `{len(closed_experiments)}`",
         f"- Skipped because no marker found: `{len(skipped_no_marker)}`",

@@ -4,21 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "single_issue = only that issue; below_issue_id = all qualifying issues with smaller numbers"
+        description: "single_issue = only that issue; range_of_issues = qualifying issues in [lower_issue_id..issue_id]"
         required: true
-        default: below_issue_id
+        default: range_of_issues
         type: choice
         options:
           - single_issue
-          - below_issue_id
+          - range_of_issues
       issue_id:
-        description: "Issue number, or threshold issue number when mode=below_issue_id"
+        description: "Issue number, or upper boundary issue number when mode=range_of_issues (inclusive)"
         required: true
         type: number
-      max_issues:
-        description: "Safety cap for below_issue_id mode (1-50)"
+      lower_issue_id:
+        description: "Lower boundary issue number when mode=range_of_issues (inclusive), relevant only when mode=range_of_issues"
         required: true
-        default: 25
+        default: 1
         type: number
 
 concurrency:
@@ -48,6 +48,6 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           RESET_MODE: ${{ inputs.mode }}
+          LOWER_ISSUE_ID: ${{ inputs.lower_issue_id }}
           TARGET_ISSUE_ID: ${{ inputs.issue_id }}
-          MAX_ISSUES: ${{ inputs.max_issues }}
         run: python .github/scripts/reset_to_intake.py
