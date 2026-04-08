@@ -50,6 +50,10 @@ safe-outputs:
     blocked: ["~*", "*[bot]"]
     target: "*"
     max: 25
+  create-issue:
+    title-prefix: "[marketing-sales] "
+    labels: [type/report]
+    max: 1
   noop:
 ---
 
@@ -94,7 +98,7 @@ Tooling note:
 - `risk/low` before `risk/medium`
 - lower issue number first
 
-4) Process only the first `${{ inputs.limit }}` eligible issues.
+4) Take only the first `${{ inputs.limit }}` eligible issues.
 
 If there are no eligible issues, emit noop.
 
@@ -134,6 +138,9 @@ For each processed issue, update only:
 ### Key blockers / friction
 - ...
 
+### Proposed strategy
+- ...
+
 ### Complexity
 - very easy|easy|medium|hard|very hard
 
@@ -151,6 +158,34 @@ Pick exactly one:
 - marketing-sales/very-hard
 
 Do NOT touch issues that already have any `marketing-sales/*` label.
+
+## Report issue (MANDATORY if at least 1 issue processed)
+
+After processing the batch, create exactly one report issue with title:
+
+`[marketing-sales] <YYYY-MM-DD>`
+
+The report body must include:
+
+# Marketing & Sales Complexity Report
+
+## Summary
+- Candidate issues found: <number>
+- Issues taken for processing: <number>
+- Issues successfully processed: <number>
+
+## Processed issues
+| Issue | Complexity | Proposed strategy |
+|---|---|---|
+| #123 | medium | founder-led sales to niche SMBs via outbound + case-study content |
+| #456 | easy | self-serve PLG via SEO + templates + referrals |
+
+Rules:
+- "Candidate issues found" = number of eligible issues after exact filtering and before truncating to the limit
+- "Issues taken for processing" = min(candidate issues found, limit)
+- "Issues successfully processed" = number of issues for which both island update and label application were completed
+- Include only successfully processed issues in the table
+- If some taken issues fail, they should not appear in the table
 
 ## Calibration guide
 
