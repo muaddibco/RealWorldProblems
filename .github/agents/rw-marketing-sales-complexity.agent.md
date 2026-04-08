@@ -122,9 +122,9 @@ The report must contain:
 - Issues successfully processed: <number>
 
 ## Processed issues
-| Issue | Complexity | Proposed strategy |
-|---|---|---|
-| #123 | medium | founder-led sales to niche SMBs via outbound + case-study content |
+| Issue | Title | Complexity | Proposed strategy |
+|---|---|---|---|
+| #123 | Example Issue Title | medium | founder-led sales to niche SMBs via outbound + case-study content |
 
 Definitions:
 - candidate issues found = number of eligible issues after exact filtering and before truncating to the limit
