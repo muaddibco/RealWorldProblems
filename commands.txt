@@ -6,3 +6,7 @@ gh extension upgrade github/gh-aw
 gh aw compile
 
 gh aw audit ###JobId###
+
+
+
+is:issue state:open label:type/problem label:stage/7-validation (label:score/top-10 OR label:score/top-50) (label:ai-risk/low OR label:ai-risk/medium)
