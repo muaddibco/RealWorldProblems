@@ -130,6 +130,13 @@ Stage behavior:
 - `persona/enterprise`
 - `persona/senior`
 
+### Marketing & sales complexity
+- `marketing-sales/very-easy`
+- `marketing-sales/easy`
+- `marketing-sales/medium`
+- `marketing-sales/hard`
+- `marketing-sales/very-hard`
+
 > Optional: `cluster/<slug>` labels are allowed if your repo owners pre-create them. If not, store cluster membership in the issue body only.
 
 ## 2) Islands (the only places agents may edit)
@@ -175,6 +182,10 @@ Agents MUST use these markers in issue bodies and only update content between th
 ### Steward Notes (automation-only)
 <!-- rw:steward:start -->
 <!-- rw:steward:end -->
+
+### Marketing & sales complexity
+<!-- rw:marketing-sales:start -->
+<!-- rw:marketing-sales:end -->
 
 ## 3) Required structure for `type/problem` issues
 
@@ -493,6 +504,10 @@ It optimizes for:
 - problems that matter
 - solutions that can be built quickly
 - products that survive AI commoditization
+
+## 14) Marketing & sales rules
+- At most one `marketing-sales/*` label may exist on a problem issue.
+- This assessment is orthogonal metadata and does not advance the stage by itself.
 
 # Final rule
 
