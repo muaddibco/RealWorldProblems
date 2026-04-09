@@ -453,6 +453,18 @@ Instead:
 - if defensibility is not strong, test against “AI + manual workflow”
 - verify that users prefer the product over generic AI plus existing tools
 
+### Optional manual analysis: rw:expansion
+Purpose: assess whether a currently framed problem and its proposed solution can credibly expand to a wider actor set, broader workflow, or adjacent use case.
+
+Island:
+- `<!-- rw:expansion:start --> ... <!-- rw:expansion:end -->`
+
+Rules:
+- Optional/manual only; not a stage.
+- Does not advance or archive issues.
+- Does not add or remove labels.
+- Should be conservative about expansion and explicit when broader scope becomes a different product.
+
 ## 11) Steward rules
 
 For up to 10 issues per run:
