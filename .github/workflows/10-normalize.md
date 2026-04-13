@@ -6,6 +6,10 @@ on:
     types: [labeled]
     names: [stage/0-intake]
     lock-for-agent: true
+    
+concurrency:
+  group: rw-copilot-agents-${{ github.repository }}
+  cancel-in-progress: false
 
 engine:
   id: copilot

@@ -6,6 +6,10 @@ on:
     names: [stage/3-scored]
     lock-for-agent: true
 
+concurrency:
+  group: rw-copilot-agents-${{ github.repository }}
+  cancel-in-progress: false
+
 engine:
   id: copilot
   agent: rw-scorer

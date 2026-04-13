@@ -3,6 +3,10 @@ name: "RW: Daily Top-10 Report"
 on:
   schedule: daily
 
+concurrency:
+  group: rw-copilot-agents-${{ github.repository }}
+  cancel-in-progress: false
+
 engine:
   id: copilot
   agent: rw-shortlist-curator
