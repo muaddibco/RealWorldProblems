@@ -2,13 +2,18 @@
 name: "RW: Normalize"
 on:
   workflow_dispatch:
-  issues:
-    types: [labeled]
-    names: [stage/0-intake]
-    lock-for-agent: true
-    
+    inputs:
+      issue_number:
+        description: "Target issue number"
+        required: true
+        type: string
+      trigger_label:
+        description: "Stage label that triggered this run"
+        required: true
+        type: string
+
 concurrency:
-  group: rw-copilot-agents-${{ github.repository }}
+  group: rw-<workflow-name>-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 engine:
@@ -48,15 +53,18 @@ safe-outputs:
 
 # Normalize Problem Issue
 
-Operate ONLY if the issue has labels:
-- type/problem
-- stage/0-intake
-- and does NOT have label agentic-workflows
+## Dispatch context
 
-Otherwise emit noop.
+- Target issue: #${{ inputs.issue_number }}
+- Trigger label: `${{ inputs.trigger_label }}`
+
+Before doing anything else:
+- Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
+- Operate ONLY on issue #${{ inputs.issue_number }}.
+- If that issue no longer has labels `type/problem` and `stage/0-intake`, or has label `agentic-workflows`, emit `noop` and stop.
 
 Tooling note:
-- Read the target issue using GitHub MCP issue tools (issue_read/list_issues/search_issues).
+- Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
 

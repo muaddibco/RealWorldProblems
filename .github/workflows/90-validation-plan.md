@@ -1,13 +1,19 @@
 ---
 name: "RW: Validation Plan"
 on:
-  issues:
-    types: [labeled]
-    names: [stage/7-validation]
-    lock-for-agent: true
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Target issue number"
+        required: true
+        type: string
+      trigger_label:
+        description: "Stage label that triggered this run"
+        required: true
+        type: string
 
 concurrency:
-  group: rw-copilot-agents-${{ github.repository }}
+  group: rw-validation-plan-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 engine:
@@ -51,14 +57,15 @@ safe-outputs:
 
 # Create a validation plan focused on the next highest-value uncertainty
 
-Operate ONLY if:
-- type/problem
-- stage/7-validation
-- and wedge/credible
-- and does NOT have label agentic-workflows
-- and does NOT have label stage/9-archived
+## Dispatch context
 
-Otherwise noop.
+- Target issue: #${{ inputs.issue_number }}
+- Trigger label: `${{ inputs.trigger_label }}`
+
+Before doing anything else:
+- Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
+- Operate ONLY if issue #${{ inputs.issue_number }} has labels `type/problem`, `stage/7-validation`, and `wedge/credible`, and does NOT have labels `agentic-workflows` or `stage/9-archived`.
+- Otherwise noop.
 
 ## What this stage is for
 This stage should turn a validation-ready problem into a **practical next experiment**.

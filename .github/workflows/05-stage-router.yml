@@ -1,0 +1,78 @@
+name: "RW: Stage Router"
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: read
+  actions: write
+
+concurrency:
+  group: rw-stage-router-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Route stage-label events to exactly one workflow
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const label = context.payload.label?.name;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const ref = context.payload.repository.default_branch || "main";
+
+            if (!issue || issue.pull_request) {
+              core.info("No issue payload or this is a PR event. Skipping.");
+              return;
+            }
+
+            const labels = (issue.labels || [])
+              .map(l => typeof l === "string" ? l : l.name)
+              .filter(Boolean);
+
+            if (labels.includes("agentic-workflows")) {
+              core.info("Issue is excluded by label agentic-workflows. Skipping.");
+              return;
+            }
+
+            const stageMap = {
+              "stage/0-intake": "10-normalize.lock.yml",
+              "stage/1-normalized": "20-dedupe.lock.yml",
+              "stage/2-deduped": "30-software-fit.lock.yml",
+              "stage/3-scored": "40-score.lock.yml",
+              "stage/4-solution": "50-solution.lock.yml",
+              "stage/ai-defensibility": "55-ai-defensibility.lock.yml",
+              "stage/5-competitors": "60-competitors.lock.yml",
+              "stage/6-shortlist": "70-wedge-filter.lock.yml",
+              "stage/7-validation": "90-validation-plan.lock.yml"
+            };
+
+            const workflow_id = stageMap[label];
+
+            if (!workflow_id) {
+              core.info(`Label '${label}' is not a routed stage label. Skipping.`);
+              return;
+            }
+
+            core.info(`Dispatching ${workflow_id} for issue #${issue.number}`);
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id,
+              ref,
+              inputs: {
+                issue_number: String(issue.number),
+                trigger_label: label
+              }
+            });
+
+            core.info(`Dispatched ${workflow_id} for issue #${issue.number}`);

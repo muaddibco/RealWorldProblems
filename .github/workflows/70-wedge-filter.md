@@ -1,13 +1,19 @@
 ---
 name: "RW: Wedge Filter + Archive"
 on:
-  issues:
-    types: [labeled]
-    names: [stage/6-shortlist]
-    lock-for-agent: true
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Target issue number"
+        required: true
+        type: string
+      trigger_label:
+        description: "Stage label that triggered this run"
+        required: true
+        type: string
 
 concurrency:
-  group: rw-copilot-agents-${{ github.repository }}
+  group: rw-wedge-filter-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 engine:
@@ -49,12 +55,15 @@ safe-outputs:
 
 # Wedge decision (wedge/credible vs wedge/weak)
 
-Operate ONLY if:
-- type/problem
-- stage/6-shortlist
-- and does NOT have label agentic-workflows
+## Dispatch context
 
-Otherwise noop.
+- Target issue: #${{ inputs.issue_number }}
+- Trigger label: `${{ inputs.trigger_label }}`
+
+Before doing anything else:
+- Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
+- Operate ONLY if issue #${{ inputs.issue_number }} has label `type/problem` and `stage/6-shortlist`, and does NOT have label `agentic-workflows`.
+- Otherwise noop.
 
 ## Preconditions
 
@@ -69,11 +78,6 @@ If one of those is clearly missing:
 - add one short comment explaining what is missing
 - add label: status/needs-info
 - stop
-
-Tooling note:
-- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
-- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
 
 ## Decide wedge quality
 Pick exactly one:

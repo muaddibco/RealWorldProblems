@@ -4,7 +4,7 @@ on:
   schedule: daily
 
 concurrency:
-  group: rw-copilot-agents-${{ github.repository }}
+  group: rw-shortlist-daily-${{ github.repository }}
   cancel-in-progress: false
 
 engine:

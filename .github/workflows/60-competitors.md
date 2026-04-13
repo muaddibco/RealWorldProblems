@@ -1,13 +1,19 @@
 ---
 name: "RW: Competitor Scan"
 on:
-  issues:
-    types: [labeled]
-    names: [stage/5-competitors]
-    lock-for-agent: true
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Target issue number"
+        required: true
+        type: string
+      trigger_label:
+        description: "Stage label that triggered this run"
+        required: true
+        type: string
 
 concurrency:
-  group: rw-copilot-agents-${{ github.repository }}
+  group: rw-competitors-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 engine:
@@ -57,15 +63,15 @@ safe-outputs:
 
 # Competitor scan (rw:competitors island)
 
-Operate ONLY if:
-- type/problem
-- stage/5-competitors
-- and does NOT have label agentic-workflows
+## Dispatch context
 
-Tooling note:
-- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
-- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
+- Target issue: #${{ inputs.issue_number }}
+- Trigger label: `${{ inputs.trigger_label }}`
+
+Before doing anything else:
+- Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
+- Operate ONLY if issue #${{ inputs.issue_number }} has label `type/problem` and `stage/5-competitors`, and does NOT have label `agentic-workflows`.
+- Otherwise noop.
 
 Use Tavily MCP as the primary web research source (`tavily_search`, optionally `tavily_research`).
 Do not use direct `web-fetch` for arbitrary domains in this workflow because firewall allowlists may block it.
