@@ -51,6 +51,10 @@ safe-outputs:
   github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   update-issue:
     body: true
+    target: "*"
+    max: 1
+  add-comment:
+    target: "*"
     max: 1
   add-labels:
     blocked: ["~*", "*[bot]"]

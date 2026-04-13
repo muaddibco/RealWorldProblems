@@ -39,12 +39,14 @@ safe-outputs:
   github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   update-issue:
     body: true
+    target: "*"
     max: 1
   create-issue:
     title-prefix: "[experiment] "
     labels: [type/experiment]
     max: 1
   add-comment:
+    target: "*"
     max: 1
   add-labels:
     blocked: ["~*", "*[bot]"]
@@ -52,6 +54,9 @@ safe-outputs:
   remove-labels:
     blocked: ["~*"]
     max: 10
+  close-issue:
+    target: "*"
+    max: 1
   noop:
 ---
 
