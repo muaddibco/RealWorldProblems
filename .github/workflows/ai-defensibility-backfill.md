@@ -1,5 +1,6 @@
 ---
 name: "RW: AI Defensibility Backfill"
+strict: false
 
 on:
   workflow_dispatch:

@@ -1,5 +1,6 @@
 ---
 name: "RW: Validation Plan"
+strict: false
 on:
   workflow_dispatch:
     inputs:
@@ -70,7 +71,33 @@ safe-outputs:
 Before doing anything else:
 - Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
 - Operate ONLY if issue #${{ inputs.issue_number }} has labels `type/problem`, `stage/7-validation`, and `wedge/credible`, and does NOT have labels `agentic-workflows` or `stage/9-archived`.
-- Otherwise noop.
+- Otherwise `noop`.
+
+## Mandatory completion rule
+
+A successful run MUST end with at least one safe-output tool call.
+
+Valid endings are only:
+- `update_issue` plus any needed `add_labels` / `remove_labels`
+- `add_comment` plus `add_labels` when info is missing
+- `noop` when the issue should not be processed
+
+Do not end with prose-only output.
+Do not stop after analysis.
+A run with no safe-output tool call is invalid.
+
+## Mandatory write targeting rule
+
+Because this workflow runs via `workflow_dispatch`, there is no implicit triggering issue.
+
+For every write action, always target:
+- `repo: ${{ github.repository }}`
+- `issue_number: ${{ inputs.issue_number }}` for `update_issue`
+- `item_number: ${{ inputs.issue_number }}` for `add_comment`
+- `item_number: ${{ inputs.issue_number }}` for `add_labels`
+- `item_number: ${{ inputs.issue_number }}` for `remove_labels`
+
+Never rely on implicit targeting.
 
 ## What this stage is for
 This stage should turn a validation-ready problem into a **practical next experiment**.

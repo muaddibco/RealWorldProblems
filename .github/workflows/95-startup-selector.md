@@ -1,5 +1,6 @@
 ---
 name: "RW: Startup Selector"
+strict: false
 on:
   schedule: weekly
   workflow_dispatch:

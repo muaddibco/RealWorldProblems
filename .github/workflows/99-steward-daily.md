@@ -1,5 +1,6 @@
 ---
 name: "RW: Repo Steward (Daily)"
+strict: false
 on:
   # schedule: daily
   workflow_dispatch:

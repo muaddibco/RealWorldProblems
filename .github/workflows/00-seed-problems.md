@@ -1,5 +1,6 @@
 ---
 name: "RW: Seed Problems"
+strict: false
 on:
   workflow_dispatch:
     inputs:

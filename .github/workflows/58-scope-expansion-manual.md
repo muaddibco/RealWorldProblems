@@ -1,5 +1,6 @@
 ---
 name: "RW: Scope Expansion Review (Manual)"
+strict: false
 on:
   workflow_dispatch:
     inputs:

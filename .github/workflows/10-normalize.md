@@ -1,5 +1,6 @@
 ---
 name: "RW: Normalize"
+strict: false
 on:
   workflow_dispatch:
     inputs:
@@ -13,7 +14,7 @@ on:
         type: string
 
 concurrency:
-  group: rw-<workflow-name>-${{ github.repository }}-${{ inputs.issue_number }}
+  group: rw-normalize-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 engine:
@@ -69,6 +70,32 @@ Tooling note:
 - Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
 - Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
 - If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
+
+## Mandatory completion rule
+
+A successful run MUST end with at least one safe-output tool call.
+
+Valid endings are only:
+- `update_issue` plus any needed `add_labels` / `remove_labels`
+- `add_comment` plus `add_labels` when info is missing
+- `noop` when the issue should not be processed
+
+Do not end with prose-only output.
+Do not stop after analysis.
+A run with no safe-output tool call is invalid.
+
+## Mandatory write targeting rule
+
+Because this workflow runs via `workflow_dispatch`, there is no implicit triggering issue.
+
+For every write action, always target:
+- `repo: ${{ github.repository }}`
+- `issue_number: ${{ inputs.issue_number }}` for `update_issue`
+- `item_number: ${{ inputs.issue_number }}` for `add_comment`
+- `item_number: ${{ inputs.issue_number }}` for `add_labels`
+- `item_number: ${{ inputs.issue_number }}` for `remove_labels`
+
+Never rely on implicit targeting.
 
 ## Responsibilities of this stage
 This stage is responsible for:
@@ -174,8 +201,9 @@ After attempting inference, if any of the following are still unresolvable with 
 - domain label — not determinable
 
 Then:
-- Add a short comment listing exactly what's missing, invalid, or uninferrable
-- Add label: `status/needs-info`
+- Call `add_comment` on issue #${{ inputs.issue_number }} listing exactly what is missing, invalid, conflicting, or uninferrable
+- Call `add_labels` on issue #${{ inputs.issue_number }} with:
+  - `status/needs-info`
 - Do NOT change stage
 
 ## Normalized output requirements
@@ -198,16 +226,21 @@ include:
 - `**Archetype:** <archetype>`
 
 ## If complete
-1) Update the normalized island only:
-   `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
-2) Add labels:
+1) Call `update_issue` on issue #${{ inputs.issue_number }} with:
+   - `repo: ${{ github.repository }}`
+   - `issue_number: ${{ inputs.issue_number }}`
+   - `operation: replace-island`
+   - the normalized island only:
+     `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+2) Call `add_labels` on issue #${{ inputs.issue_number }} for:
    - `stage/1-normalized`
    - exactly one resolved `persona/*`
    - resolved `domain/*` labels
-3) Remove labels:
+3) Call `remove_labels` on issue #${{ inputs.issue_number }} for:
    - `stage/0-intake`
    - any conflicting `persona/*` labels
    - any conflicting `domain/*` labels
-4) Optionally remove `status/needs-info` if the issue is now sufficiently complete
+4) Optionally call `remove_labels` on issue #${{ inputs.issue_number }} for:
+   - `status/needs-info`
 
-Always emit at least one safe output operation, or noop.
+Always emit at least one safe output operation, or `noop`.

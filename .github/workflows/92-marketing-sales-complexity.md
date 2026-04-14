@@ -1,5 +1,6 @@
 ---
 name: "RW: Marketing & Sales Complexity"
+strict: false
 on:
   workflow_dispatch:
     inputs:

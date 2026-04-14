@@ -1,5 +1,6 @@
 ---
 name: "RW: Daily Top-10 Report"
+strict: false
 on:
   schedule: daily
 
