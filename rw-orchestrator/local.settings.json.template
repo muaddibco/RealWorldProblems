@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "GITHUB_TOKEN": "",
+    "GITHUB_OWNER": "",
+    "GITHUB_REPO": "",
+    "GITHUB_WEBHOOK_SECRET": "",
+    "GITHUB_WORKFLOW_REF": "main",
+    "SCAN_BATCH_SIZE": "10",
+    "SCAN_STAGE_ORDER": "stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation"
+  }
+}

@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Route stage-label events to exactly one workflow
         uses: actions/github-script@v8
+        env:
+          RW_ORCHESTRATOR_ACTIVE: ${{ vars.RW_ORCHESTRATOR_ACTIVE }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -40,6 +42,14 @@ jobs:
 
             if (labels.includes("agentic-workflows")) {
               core.info("Issue is excluded by label agentic-workflows. Skipping.");
+              return;
+            }
+
+            // When the Azure Durable orchestrator is active it handles dispatching via webhook.
+            // Set the repo variable RW_ORCHESTRATOR_ACTIVE=true to disable this router.
+            const orchestratorActive = process.env.RW_ORCHESTRATOR_ACTIVE === "true";
+            if (orchestratorActive) {
+              core.info("RW_ORCHESTRATOR_ACTIVE=true: Azure Durable orchestrator is handling dispatch. Stage router skipping.");
               return;
             }
 

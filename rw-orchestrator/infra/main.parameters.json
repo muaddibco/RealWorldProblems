@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "githubOwner": {
+      "value": "${GITHUB_OWNER}"
+    },
+    "githubRepo": {
+      "value": "${GITHUB_REPO}"
+    },
+    "githubWorkflowRef": {
+      "value": "${GITHUB_WORKFLOW_REF}"
+    },
+    "scanBatchSize": {
+      "value": "${SCAN_BATCH_SIZE}"
+    },
+    "maxStagesPerOrchestration": {
+      "value": "${MAX_STAGES_PER_ORCHESTRATION}"
+    },
+    "scanStageOrder": {
+      "value": "${SCAN_STAGE_ORDER}"
+    },
+    "githubToken": {
+      "value": "${GITHUB_TOKEN}"
+    },
+    "githubWebhookSecret": {
+      "value": "${GITHUB_WEBHOOK_SECRET}"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+name: rw-orchestrator
+infra:
+  provider: bicep
+  path: infra
+  module: main
+services:
+  orchestrator:
+    project: .
+    language: js
+    host: function

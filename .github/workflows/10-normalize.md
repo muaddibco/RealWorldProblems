@@ -12,6 +12,10 @@ on:
         description: "Stage label that triggered this run"
         required: true
         type: string
+      orchestration_id:
+        description: "Durable orchestration instance ID for correlation"
+        required: false
+        type: string
 
 engine:
   id: copilot
@@ -56,6 +60,7 @@ safe-outputs:
 
 - Target issue: #${{ inputs.issue_number }}
 - Trigger label: `${{ inputs.trigger_label }}`
+- Orchestration ID: `${{ inputs.orchestration_id }}`
 
 Before doing anything else:
 - Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
