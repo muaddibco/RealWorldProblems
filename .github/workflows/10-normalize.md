@@ -13,10 +13,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: rw-normalize-${{ github.repository }}-${{ inputs.issue_number }}
-  cancel-in-progress: false
-
 engine:
   id: copilot
   agent: rw-normalizer
