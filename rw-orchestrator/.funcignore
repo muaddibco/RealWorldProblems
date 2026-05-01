@@ -1,4 +1,4 @@
-src
+/src
 *.ts
 .vscode
 local.settings.json
