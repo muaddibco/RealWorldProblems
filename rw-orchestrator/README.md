@@ -35,11 +35,16 @@ Azure Durable Functions service that orchestrates the RealWorldProblems issue pi
 npm install
 ```
 
-4. Build and run:
+4. In one terminal start Azurite:
 
 ```bash
-npm run build
-npm start
+npx azurite --silent --location .azurite --debug .azurite/debug.log
+```
+
+5. In another terminal, start functions:
+
+```bash
+npm --prefix rw-orchestrator start
 ```
 
 ## GitHub webhook setup
@@ -74,3 +79,16 @@ After updates, run `gh aw compile` from repo root.
 ## Azure deployment (PowerShell)
 
 Use `deploy/deploy.ps1` as a baseline deployment script.
+
+## Local webhook debugging
+
+Use `deploy/send-debug-webhook.ps1` to send a signed GitHub-style webhook payload to a local or remote endpoint.
+
+Example:
+
+```powershell
+.\deploy\send-debug-webhook.ps1 `
+   -WebhookSecret "your-secret" `
+   -PayloadPath ".\payload.json" `
+   -GitHubEvent workflow_run
+```
