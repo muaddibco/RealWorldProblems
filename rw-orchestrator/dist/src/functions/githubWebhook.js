@@ -54,117 +54,131 @@ df.app.client.http("githubWebhook", {
     methods: ["POST"],
     authLevel: "function",
     handler: async (request, client, context) => {
-        const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-        if (!webhookSecret) {
-            return {
-                status: 500,
-                jsonBody: {
-                    error: "GITHUB_WEBHOOK_SECRET is not configured"
-                }
-            };
-        }
-        const rawBody = await request.text();
         try {
-            (0, webhookValidation_1.verifyGitHubSignature)({
-                secret: webhookSecret,
-                signature256: request.headers.get("x-hub-signature-256"),
-                rawBody
-            });
-        }
-        catch (error) {
-            context.warn(`Webhook validation failed: ${error instanceof Error ? error.message : String(error)}`);
-            return {
-                status: 401,
-                jsonBody: {
-                    error: "Invalid signature"
-                }
-            };
-        }
-        const event = request.headers.get("x-github-event");
-        if (!event) {
-            return {
-                status: 400,
-                jsonBody: {
-                    error: "Missing x-github-event header"
-                }
-            };
-        }
-        const payload = JSON.parse(rawBody);
-        if (event === "issues") {
-            const action = typeof payload.action === "string" ? payload.action : "";
-            const acceptedActions = new Set(["opened", "edited", "labeled", "unlabeled"]);
-            if (!acceptedActions.has(action)) {
-                return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
+            context.info(`githubWebhook invoked: method=${request.method} url=${request.url} event=${request.headers.get("x-github-event") ?? "missing"} delivery=${request.headers.get("x-github-delivery") ?? "missing"}`);
+            const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+            if (!webhookSecret) {
+                context.error("githubWebhook: missing required app setting GITHUB_WEBHOOK_SECRET");
+                return {
+                    status: 500,
+                    jsonBody: {
+                        error: "GITHUB_WEBHOOK_SECRET is not configured"
+                    }
+                };
             }
-            const repository = payload.repository;
-            const issue = payload.issue;
-            if (!repository || !issue) {
-                return accepted({ ignored: true, reason: "missing repository/issue payload" });
-            }
-            const owner = repository.owner?.login ?? "";
-            const repo = repository.name ?? "";
-            const issueNumber = Number(issue.number);
-            const { owner: expectedOwner, repo: expectedRepo } = (0, env_1.getRepoConfig)();
-            if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
-                return accepted({ ignored: true, reason: "invalid issue identity" });
-            }
-            if (owner !== expectedOwner || repo !== expectedRepo) {
-                return accepted({ ignored: true, reason: "repository not configured target" });
-            }
-            const instanceId = issueInstanceId(owner, repo, issueNumber);
-            const existing = await client.getStatus(instanceId);
-            if (existing && isActiveStatus(existing.runtimeStatus)) {
-                return accepted({ status: "already-running", instanceId });
-            }
-            await client.startNew("IssuePipelineOrchestrator", {
-                instanceId,
-                input: {
-                    owner,
-                    repo,
-                    issueNumber,
-                    reason: "webhook"
-                }
-            });
-            return accepted({ status: "started", instanceId });
-        }
-        if (event === "workflow_run") {
-            const action = typeof payload.action === "string" ? payload.action : "";
-            if (action !== "completed") {
-                return accepted({ ignored: true, reason: `unsupported workflow_run action: ${action}` });
-            }
-            const repository = payload.repository;
-            if (!repository) {
-                return accepted({ ignored: true, reason: "missing repository payload" });
-            }
-            const owner = repository.owner?.login ?? "";
-            const repo = repository.name ?? "";
-            const { owner: expectedOwner, repo: expectedRepo } = (0, env_1.getRepoConfig)();
-            if (owner !== expectedOwner || repo !== expectedRepo) {
-                return accepted({ ignored: true, reason: "repository not configured target" });
-            }
-            const completion = (0, workflowCompletion_1.extractWorkflowCompletion)(payload);
-            if (!completion) {
-                return accepted({ ignored: true, reason: "could not correlate workflow run to issue" });
-            }
-            const instanceId = issueInstanceId(owner, repo, completion.issueNumber);
-            const existing = await client.getStatus(instanceId);
-            if (!existing || !isActiveStatus(existing.runtimeStatus)) {
-                context.info(`Ignoring workflow_run completion for inactive orchestration ${instanceId}`);
-                return accepted({ ignored: true, reason: "no active orchestration for workflow completion", instanceId });
-            }
+            const rawBody = await request.text();
             try {
-                await client.raiseEvent(instanceId, "workflowCompleted", {
-                    workflowRunId: completion.workflowRunId,
-                    conclusion: completion.conclusion,
-                    htmlUrl: completion.htmlUrl
+                (0, webhookValidation_1.verifyGitHubSignature)({
+                    secret: webhookSecret,
+                    signature256: request.headers.get("x-hub-signature-256"),
+                    rawBody
                 });
             }
             catch (error) {
-                context.error(`Failed to raise workflowCompleted for ${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
-                return accepted({ ignored: true, reason: "failed to deliver workflow completion", instanceId });
+                context.warn(`Webhook validation failed: ${error instanceof Error ? error.message : String(error)}`);
+                return {
+                    status: 401,
+                    jsonBody: {
+                        error: "Invalid signature"
+                    }
+                };
             }
-            return accepted({ status: "event-raised", instanceId });
+            const event = request.headers.get("x-github-event");
+            if (!event) {
+                return {
+                    status: 400,
+                    jsonBody: {
+                        error: "Missing x-github-event header"
+                    }
+                };
+            }
+            const payload = JSON.parse(rawBody);
+            if (event === "issues") {
+                const action = typeof payload.action === "string" ? payload.action : "";
+                const acceptedActions = new Set(["opened", "edited", "labeled", "unlabeled"]);
+                if (!acceptedActions.has(action)) {
+                    return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
+                }
+                const repository = payload.repository;
+                const issue = payload.issue;
+                if (!repository || !issue) {
+                    return accepted({ ignored: true, reason: "missing repository/issue payload" });
+                }
+                const owner = repository.owner?.login ?? "";
+                const repo = repository.name ?? "";
+                const issueNumber = Number(issue.number);
+                const { owner: expectedOwner, repo: expectedRepo } = (0, env_1.getRepoConfig)();
+                if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+                    return accepted({ ignored: true, reason: "invalid issue identity" });
+                }
+                if (owner !== expectedOwner || repo !== expectedRepo) {
+                    return accepted({ ignored: true, reason: "repository not configured target" });
+                }
+                const instanceId = issueInstanceId(owner, repo, issueNumber);
+                const existing = await client.getStatus(instanceId);
+                if (existing && isActiveStatus(existing.runtimeStatus)) {
+                    return accepted({ status: "already-running", instanceId });
+                }
+                await client.startNew("IssuePipelineOrchestrator", {
+                    instanceId,
+                    input: {
+                        owner,
+                        repo,
+                        issueNumber,
+                        reason: "webhook"
+                    }
+                });
+                return accepted({ status: "started", instanceId });
+            }
+            if (event === "workflow_run") {
+                const action = typeof payload.action === "string" ? payload.action : "";
+                if (action !== "completed") {
+                    return accepted({ ignored: true, reason: `unsupported workflow_run action: ${action}` });
+                }
+                const repository = payload.repository;
+                if (!repository) {
+                    return accepted({ ignored: true, reason: "missing repository payload" });
+                }
+                const owner = repository.owner?.login ?? "";
+                const repo = repository.name ?? "";
+                const { owner: expectedOwner, repo: expectedRepo } = (0, env_1.getRepoConfig)();
+                if (owner !== expectedOwner || repo !== expectedRepo) {
+                    return accepted({ ignored: true, reason: "repository not configured target" });
+                }
+                const completion = (0, workflowCompletion_1.extractWorkflowCompletion)(payload);
+                if (!completion) {
+                    return accepted({ ignored: true, reason: "could not correlate workflow run to issue" });
+                }
+                const instanceId = issueInstanceId(owner, repo, completion.issueNumber);
+                const existing = await client.getStatus(instanceId);
+                if (!existing || !isActiveStatus(existing.runtimeStatus)) {
+                    context.info(`Ignoring workflow_run completion for inactive orchestration ${instanceId}`);
+                    return accepted({ ignored: true, reason: "no active orchestration for workflow completion", instanceId });
+                }
+                try {
+                    await client.raiseEvent(instanceId, "workflowCompleted", {
+                        workflowRunId: completion.workflowRunId,
+                        conclusion: completion.conclusion,
+                        htmlUrl: completion.htmlUrl
+                    });
+                }
+                catch (error) {
+                    context.error(`Failed to raise workflowCompleted for ${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
+                    return accepted({ ignored: true, reason: "failed to deliver workflow completion", instanceId });
+                }
+                return accepted({ status: "event-raised", instanceId });
+            }
+            return accepted({ ignored: true, reason: `unsupported event: ${event}` });
         }
-        return accepted({ ignored: true, reason: `unsupported event: ${event}` });
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            context.error(`githubWebhook unhandled error: ${message}`);
+            return {
+                status: 500,
+                jsonBody: {
+                    error: "Internal server error"
+                }
+            };
+        }
     }
 });
