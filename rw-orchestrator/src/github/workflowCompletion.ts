@@ -6,7 +6,7 @@ export interface WorkflowCompletionSignal {
 }
 
 function parseIssueNumber(value: string): number | null {
-  const patterns = [/#(\d+)/, /issue[^\d]*(\d+)/i, /\b(\d{1,8})\b/];
+  const patterns = [/#(\d+)/, /issue[^\d]*(\d+)/i];
   for (const pattern of patterns) {
     const match = value.match(pattern);
     if (!match) {

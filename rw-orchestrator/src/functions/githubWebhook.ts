@@ -122,6 +122,12 @@ df.app.client.http("githubWebhook", {
 
       const owner = ((repository.owner as Record<string, unknown> | undefined)?.login as string) ?? "";
       const repo = (repository.name as string) ?? "";
+      const { owner: expectedOwner, repo: expectedRepo } = getRepoConfig();
+
+      if (owner !== expectedOwner || repo !== expectedRepo) {
+        return accepted({ ignored: true, reason: "repository not configured target" });
+      }
+
       const completion = extractWorkflowCompletion(payload);
 
       if (!completion) {
@@ -129,11 +135,22 @@ df.app.client.http("githubWebhook", {
       }
 
       const instanceId = issueInstanceId(owner, repo, completion.issueNumber);
-      await client.raiseEvent(instanceId, "workflowCompleted", {
-        workflowRunId: completion.workflowRunId,
-        conclusion: completion.conclusion,
-        htmlUrl: completion.htmlUrl
-      });
+      const existing = await client.getStatus(instanceId);
+      if (!existing || !isActiveStatus(existing.runtimeStatus)) {
+        context.info(`Ignoring workflow_run completion for inactive orchestration ${instanceId}`);
+        return accepted({ ignored: true, reason: "no active orchestration for workflow completion", instanceId });
+      }
+
+      try {
+        await client.raiseEvent(instanceId, "workflowCompleted", {
+          workflowRunId: completion.workflowRunId,
+          conclusion: completion.conclusion,
+          htmlUrl: completion.htmlUrl
+        });
+      } catch (error: unknown) {
+        context.error(`Failed to raise workflowCompleted for ${instanceId}: ${error instanceof Error ? error.message : String(error)}`);
+        return accepted({ ignored: true, reason: "failed to deliver workflow completion", instanceId });
+      }
 
       return accepted({ status: "event-raised", instanceId });
     }
