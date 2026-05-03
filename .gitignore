@@ -1,4 +1,2 @@
 .github/aw/logs/*
 rw-orchestrator/deploy/payload.json
-.azurite/__blobstorage__/*
-.azurite/__queuestorage__/*

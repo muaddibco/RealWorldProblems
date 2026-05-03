@@ -49,6 +49,28 @@ function accepted(body) {
 function isActiveStatus(status) {
     return status === "Running" || status === "Pending" || status === "ContinuedAsNew";
 }
+function isNotFoundStatusError(error) {
+    if (!error || typeof error !== "object") {
+        return false;
+    }
+    const candidate = error;
+    if (candidate.statusCode === 404 || candidate.status === 404 || candidate.response?.status === 404) {
+        return true;
+    }
+    return typeof candidate.message === "string" && /\b404\b|not found/i.test(candidate.message);
+}
+async function getStatusIfExists(client, instanceId, context) {
+    try {
+        return await client.getStatus(instanceId);
+    }
+    catch (error) {
+        if (isNotFoundStatusError(error)) {
+            context.info(`No orchestration status found for ${instanceId}; treating as not started.`);
+            return undefined;
+        }
+        throw error;
+    }
+}
 df.app.client.http("githubWebhook", {
     route: "github/webhook",
     methods: ["POST"],
@@ -115,7 +137,7 @@ df.app.client.http("githubWebhook", {
                     return accepted({ ignored: true, reason: "repository not configured target" });
                 }
                 const instanceId = issueInstanceId(owner, repo, issueNumber);
-                const existing = await client.getStatus(instanceId);
+                const existing = await getStatusIfExists(client, instanceId, context);
                 if (existing && isActiveStatus(existing.runtimeStatus)) {
                     return accepted({ status: "already-running", instanceId });
                 }
@@ -150,7 +172,7 @@ df.app.client.http("githubWebhook", {
                     return accepted({ ignored: true, reason: "could not correlate workflow run to issue" });
                 }
                 const instanceId = issueInstanceId(owner, repo, completion.issueNumber);
-                const existing = await client.getStatus(instanceId);
+                const existing = await getStatusIfExists(client, instanceId, context);
                 if (!existing || !isActiveStatus(existing.runtimeStatus)) {
                     context.info(`Ignoring workflow_run completion for inactive orchestration ${instanceId}`);
                     return accepted({ ignored: true, reason: "no active orchestration for workflow completion", instanceId });

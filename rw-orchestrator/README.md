@@ -80,6 +80,33 @@ After updates, run `gh aw compile` from repo root.
 
 Use `deploy/deploy.ps1` as a baseline deployment script.
 
+For end-to-end deployment with `azd` (recommended for this repo), use `deploy/azd-up.ps1`.
+
+From the `rw-orchestrator` folder:
+
+```powershell
+.\deploy\azd-up.ps1 `
+   -SubscriptionId "<subscription-id>" `
+   -GitHubToken "<github-token>" `
+   -GitHubWebhookSecret "<webhook-secret>"
+```
+
+Notes:
+- `GitHubOwner` defaults to `muaddibco`.
+- `GitHubRepo` defaults to `RealWorldProblems`.
+- `EnvironmentName` defaults to `dev`.
+- `Location` defaults to `eastus`.
+
+To provision infrastructure only (without full app deployment), add `-ProvisionOnly`:
+
+```powershell
+.\deploy\azd-up.ps1 `
+   -SubscriptionId "<subscription-id>" `
+   -GitHubToken "<github-token>" `
+   -GitHubWebhookSecret "<webhook-secret>" `
+   -ProvisionOnly
+```
+
 ## Local webhook debugging
 
 Use `deploy/send-debug-webhook.ps1` to send a signed GitHub-style webhook payload to a local or remote endpoint.
