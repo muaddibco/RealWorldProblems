@@ -1,2 +1,4 @@
 .github/aw/logs/*
 rw-orchestrator/deploy/payload.json
+.azurite/*
+rw-orchestrator/.azurite/*
