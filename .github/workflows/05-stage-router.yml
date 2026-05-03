@@ -1,8 +1,7 @@
 name: "RW: Stage Router"
 
 on:
-  issues:
-    types: [labeled]
+  workflow_dispatch:
 
 permissions:
   contents: read
