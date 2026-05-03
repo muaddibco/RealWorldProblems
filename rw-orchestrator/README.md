@@ -88,7 +88,8 @@ From the `rw-orchestrator` folder:
 .\deploy\azd-up.ps1 `
    -SubscriptionId "<subscription-id>" `
    -GitHubToken "<github-token>" `
-   -GitHubWebhookSecret "<webhook-secret>"
+   -GitHubWebhookSecret "<webhook-secret>" `
+   -AutoResolveServiceTagConflicts
 ```
 
 Notes:
@@ -104,6 +105,7 @@ To provision infrastructure only (without full app deployment), add `-ProvisionO
    -SubscriptionId "<subscription-id>" `
    -GitHubToken "<github-token>" `
    -GitHubWebhookSecret "<webhook-secret>" `
+   -AutoResolveServiceTagConflicts `
    -ProvisionOnly
 ```
 
