@@ -21,6 +21,8 @@ concurrency:
   group: rw-wedge-filter-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
+run-name: "RW: Wedge Filter + Archive | issue #${{ inputs.issue_number }} | orch ${{ inputs.orchestration_id || 'n/a' }}"
+
 engine:
   id: copilot
   agent: rw-wedge-filter
