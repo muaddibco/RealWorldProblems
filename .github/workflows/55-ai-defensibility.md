@@ -21,6 +21,8 @@ concurrency:
   group: rw-ai-defensibility-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
+run-name: "RW: AI Defensibility Gate | issue #${{ inputs.issue_number }} | orch ${{ inputs.orchestration_id || 'n/a' }}"
+
 engine:
   id: copilot
   agent: rw-ai-defensibility

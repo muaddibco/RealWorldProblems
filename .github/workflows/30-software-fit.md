@@ -21,6 +21,8 @@ concurrency:
   group: rw-software-fit-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
+run-name: "RW: Software Fit Gate | issue #${{ inputs.issue_number }} | orch ${{ inputs.orchestration_id || 'n/a' }}"
+
 engine:
   id: copilot
   agent: rw-software-fit

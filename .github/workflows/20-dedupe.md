@@ -17,6 +17,8 @@ on:
         required: false
         type: string
 
+run-name: "RW: Dedupe + Cluster | issue #${{ inputs.issue_number }} | orch ${{ inputs.orchestration_id || 'n/a' }}"
+
 engine:
   id: copilot
   agent: rw-deduper
