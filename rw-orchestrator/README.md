@@ -121,3 +121,48 @@ Example:
    -PayloadPath ".\payload.json" `
    -GitHubEvent workflow_run
 ```
+
+## Durable instance management scripts
+
+Use these scripts to inspect and control a specific Durable Functions orchestration instance by `instanceId`.
+
+Scripts:
+- `deploy/get-instance-status.ps1` - gets instance status JSON
+- `deploy/terminate-instance.ps1` - terminates an instance and prints current status
+
+Both scripts support:
+- Explicit arguments for app and resource selection
+- Environment variable fallbacks: `AZURE_FUNCTIONAPP_NAME`, `AZURE_RESOURCE_GROUP`
+- `azd` environment fallback via `azd env get-values` (optional `-AzdEnvironment`)
+
+### Get instance status
+
+```powershell
+.\deploy\get-instance-status.ps1 `
+   -InstanceId "rw:muaddibco:RealWorldProblems:issue:86" `
+   -AzdEnvironment dev
+```
+
+Optional parameters:
+- `-FunctionAppName`
+- `-ResourceGroup`
+- `-TaskHub` (default: `RealWorldProblemsHub`)
+- `-Connection` (default: `Storage`)
+- `-Code` (function key; if omitted, script resolves `masterKey`)
+
+### Terminate instance
+
+```powershell
+.\deploy\terminate-instance.ps1 `
+   -InstanceId "rw:muaddibco:RealWorldProblems:issue:86" `
+   -Reason "manual-reset" `
+   -AzdEnvironment dev
+```
+
+Optional parameters:
+- `-Reason` (default: `manual-terminate`)
+- `-FunctionAppName`
+- `-ResourceGroup`
+- `-TaskHub` (default: `RealWorldProblemsHub`)
+- `-Connection` (default: `Storage`)
+- `-Code` (function key; if omitted, script resolves `masterKey`)
