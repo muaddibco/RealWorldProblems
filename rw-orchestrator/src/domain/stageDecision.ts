@@ -1,6 +1,10 @@
 import { STAGES } from "./stages";
 import { GitHubIssue, StageDefinition } from "./types";
 
+interface StageDecisionOptions {
+  hasExperimentSubIssue?: boolean;
+}
+
 function toLabelSet(issue: GitHubIssue): Set<string> {
   return new Set(issue.labels.map((label) => label.name));
 }
@@ -18,7 +22,11 @@ export function isPipelineTerminal(issue: GitHubIssue): boolean {
   return labels.has("stage/9-archived") || labels.has("status/needs-info") || !labels.has("type/problem");
 }
 
-export function decideNextStage(issue: GitHubIssue, stageDefs: StageDefinition[] = STAGES): StageDefinition | null {
+export function decideNextStage(
+  issue: GitHubIssue,
+  stageDefs: StageDefinition[] = STAGES,
+  options: StageDecisionOptions = {}
+): StageDefinition | null {
   const labels = toLabelSet(issue);
 
   if (isPipelineTerminal(issue)) {
@@ -31,6 +39,10 @@ export function decideNextStage(issue: GitHubIssue, stageDefs: StageDefinition[]
     }
 
     if (hasAny(labels, stage.forbiddenLabels)) {
+      continue;
+    }
+
+    if (stage.id === "validation" && options.hasExperimentSubIssue) {
       continue;
     }
 

@@ -46,6 +46,8 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
     while (true) {
         const issue = yield context.df.callActivityWithRetry("GetIssueActivity", retryOptions, input);
         const stage = (yield context.df.callActivity("DecideNextStageActivity", {
+            owner: input.owner,
+            repo: input.repo,
             issue,
             stages: stages_1.STAGES
         }));

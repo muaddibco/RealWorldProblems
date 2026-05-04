@@ -16,7 +16,7 @@ function isPipelineTerminal(issue) {
     const labels = toLabelSet(issue);
     return labels.has("stage/9-archived") || labels.has("status/needs-info") || !labels.has("type/problem");
 }
-function decideNextStage(issue, stageDefs = stages_1.STAGES) {
+function decideNextStage(issue, stageDefs = stages_1.STAGES, options = {}) {
     const labels = toLabelSet(issue);
     if (isPipelineTerminal(issue)) {
         return null;
@@ -26,6 +26,9 @@ function decideNextStage(issue, stageDefs = stages_1.STAGES) {
             continue;
         }
         if (hasAny(labels, stage.forbiddenLabels)) {
+            continue;
+        }
+        if (stage.id === "validation" && options.hasExperimentSubIssue) {
             continue;
         }
         return stage;

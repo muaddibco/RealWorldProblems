@@ -52,8 +52,22 @@ df.app.activity("GetIssueActivity", {
 });
 
 df.app.activity("DecideNextStageActivity", {
-  handler: async (input: { issue: GitHubIssue; stages: StageDefinition[] }) => {
-    return decideNextStage(input.issue, input.stages);
+  handler: async (input: { owner: string; repo: string; issue: GitHubIssue; stages: StageDefinition[] }) => {
+    const labels = labelNames(input.issue);
+    const shouldCheckExperimentSubIssues = labels.includes("stage/7-validation");
+
+    let hasExperimentSubIssue = false;
+    if (shouldCheckExperimentSubIssues) {
+      const github = await GitHubClient.create();
+      hasExperimentSubIssue = await github.hasSubIssueWithLabel(
+        input.owner,
+        input.repo,
+        input.issue.number,
+        "type/experiment"
+      );
+    }
+
+    return decideNextStage(input.issue, input.stages, { hasExperimentSubIssue });
   }
 });
 
