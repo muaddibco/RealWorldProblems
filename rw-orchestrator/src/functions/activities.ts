@@ -6,6 +6,36 @@ import { GitHubIssue, StageDefinition } from "../domain/types";
 import { getRepoConfig } from "../github/env";
 import { GitHubClient } from "../github/githubClient";
 
+const DISPATCH_COOLDOWN_SECONDS = 180;
+const DISPATCH_MARKER_REGEX = /<!-- rw:workflow-dispatch:([^>]+) -->/;
+
+function getDispatchCooldownMs(): number {
+  const raw = process.env.RW_WORKFLOW_DISPATCH_COOLDOWN_SECONDS;
+  const parsed = Number(raw);
+
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    return Math.floor(parsed) * 1000;
+  }
+
+  return DISPATCH_COOLDOWN_SECONDS * 1000;
+}
+
+function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undefined {
+  for (const comment of comments) {
+    const markerMatch = comment.body.match(DISPATCH_MARKER_REGEX);
+    if (!markerMatch) {
+      continue;
+    }
+
+    const timestamp = new Date(markerMatch[1]);
+    if (!Number.isNaN(timestamp.getTime())) {
+      return timestamp;
+    }
+  }
+
+  return undefined;
+}
+
 function labelNames(issue: GitHubIssue): string[] {
   return issue.labels.map((label) => label.name);
 }
@@ -73,6 +103,26 @@ df.app.activity("DispatchWorkflowActivity", {
   }) => {
     const github = await GitHubClient.create();
     const ref = process.env.GITHUB_WORKFLOW_REF ?? "main";
+    const cooldownMs = getDispatchCooldownMs();
+
+    if (cooldownMs > 0) {
+      const comments = await github.listIssueComments(input.owner, input.repo, input.issueNumber, 50);
+      const lastDispatchAt = findLatestDispatchTimestamp(comments);
+
+      if (lastDispatchAt) {
+        const nowMs = Date.now();
+        const allowedAtMs = lastDispatchAt.getTime() + cooldownMs;
+
+        if (allowedAtMs > nowMs) {
+          return {
+            dispatched: false,
+            workflowId: input.stage.workflowId,
+            reason: "dispatch-cooldown-active",
+            waitUntilUtc: new Date(allowedAtMs).toISOString()
+          };
+        }
+      }
+    }
 
     await github.dispatchWorkflow({
       owner: input.owner,
@@ -86,9 +136,21 @@ df.app.activity("DispatchWorkflowActivity", {
       }
     });
 
+    const dispatchedAtUtc = new Date().toISOString();
+    await github.addComment(
+      input.owner,
+      input.repo,
+      input.issueNumber,
+      [
+        `<!-- rw:workflow-dispatch:${dispatchedAtUtc} -->`,
+        `Workflow dispatch recorded: \`${input.stage.workflowId}\` for stage \`${input.stage.id}\` by orchestration \`${input.orchestrationId}\`.`
+      ].join("\n")
+    );
+
     return {
       dispatched: true,
-      workflowId: input.stage.workflowId
+      workflowId: input.stage.workflowId,
+      dispatchedAtUtc
     };
   }
 });

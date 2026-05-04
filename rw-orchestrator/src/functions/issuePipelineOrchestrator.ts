@@ -1,6 +1,6 @@
 import * as df from "durable-functions";
 import { STAGES } from "../domain/stages";
-import { OrchestrationInput, StageDefinition } from "../domain/types";
+import { DispatchResult, OrchestrationInput, StageDefinition } from "../domain/types";
 
 const retryOptions = new df.RetryOptions(5000, 5);
 retryOptions.backoffCoefficient = 2;
@@ -41,11 +41,26 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
       };
     }
 
-    yield context.df.callActivityWithRetry("DispatchWorkflowActivity", retryOptions, {
+    const dispatch = (yield context.df.callActivityWithRetry("DispatchWorkflowActivity", retryOptions, {
       ...input,
       stage,
       orchestrationId: context.df.instanceId
-    });
+    })) as DispatchResult;
+
+    if (!dispatch.dispatched) {
+      yield context.df.callActivityWithRetry("ReleaseIssueActivity", retryOptions, {
+        ...input,
+        stageId: stage.id
+      });
+
+      return {
+        status: "cooldown-active",
+        issueNumber: input.issueNumber,
+        stageId: stage.id,
+        reason: dispatch.reason ?? "dispatch-not-executed",
+        waitUntilUtc: dispatch.waitUntilUtc
+      };
+    }
 
     const timeoutAt = addMinutes(context.df.currentUtcDateTime, stage.timeoutMinutes);
     const completionEvent = context.df.waitForExternalEvent("workflowCompleted");

@@ -48,6 +48,9 @@ export interface ClaimResult {
 export interface DispatchResult {
   dispatched: boolean;
   workflowId: string;
+  reason?: string;
+  waitUntilUtc?: string;
+  dispatchedAtUtc?: string;
 }
 
 export interface TransitionVerification {

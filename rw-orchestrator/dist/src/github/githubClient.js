@@ -104,6 +104,22 @@ class GitHubClient {
             body
         });
     }
+    async listIssueComments(owner, repo, issueNumber, max) {
+        const perPage = Math.max(1, Math.min(max, 100));
+        const response = await this.octokit.issues.listComments({
+            owner,
+            repo,
+            issue_number: issueNumber,
+            per_page: perPage,
+            page: 1,
+            sort: "created",
+            direction: "desc"
+        });
+        return response.data.map((comment) => ({
+            body: comment.body ?? "",
+            created_at: comment.created_at
+        }));
+    }
     async dispatchWorkflow(request) {
         await this.octokit.actions.createWorkflowDispatch({
             owner: request.owner,

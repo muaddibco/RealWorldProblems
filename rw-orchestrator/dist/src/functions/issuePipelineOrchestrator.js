@@ -67,11 +67,24 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
                 reason: claim.reason ?? "already-claimed"
             };
         }
-        yield context.df.callActivityWithRetry("DispatchWorkflowActivity", retryOptions, {
+        const dispatch = (yield context.df.callActivityWithRetry("DispatchWorkflowActivity", retryOptions, {
             ...input,
             stage,
             orchestrationId: context.df.instanceId
-        });
+        }));
+        if (!dispatch.dispatched) {
+            yield context.df.callActivityWithRetry("ReleaseIssueActivity", retryOptions, {
+                ...input,
+                stageId: stage.id
+            });
+            return {
+                status: "cooldown-active",
+                issueNumber: input.issueNumber,
+                stageId: stage.id,
+                reason: dispatch.reason ?? "dispatch-not-executed",
+                waitUntilUtc: dispatch.waitUntilUtc
+            };
+        }
         const timeoutAt = addMinutes(context.df.currentUtcDateTime, stage.timeoutMinutes);
         const completionEvent = context.df.waitForExternalEvent("workflowCompleted");
         const timeoutTask = context.df.createTimer(timeoutAt);

@@ -19,6 +19,11 @@ export interface WorkflowRunInfo {
   name?: string;
 }
 
+export interface IssueCommentInfo {
+  body: string;
+  created_at: string;
+}
+
 export class GitHubClient {
   private readonly octokit: Octokit;
 
@@ -136,6 +141,24 @@ export class GitHubClient {
       issue_number: issueNumber,
       body
     });
+  }
+
+  async listIssueComments(owner: string, repo: string, issueNumber: number, max: number): Promise<IssueCommentInfo[]> {
+    const perPage = Math.max(1, Math.min(max, 100));
+    const response = await this.octokit.issues.listComments({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: perPage,
+      page: 1,
+      sort: "created",
+      direction: "desc"
+    });
+
+    return response.data.map((comment) => ({
+      body: comment.body ?? "",
+      created_at: comment.created_at
+    }));
   }
 
   async dispatchWorkflow(request: DispatchWorkflowRequest): Promise<void> {

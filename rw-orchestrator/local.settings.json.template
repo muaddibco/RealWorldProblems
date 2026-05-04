@@ -8,6 +8,7 @@
     "GITHUB_REPO": "",
     "GITHUB_WEBHOOK_SECRET": "",
     "GITHUB_WORKFLOW_REF": "main",
+    "RW_WORKFLOW_DISPATCH_COOLDOWN_SECONDS": "180",
     "SCAN_BATCH_SIZE": "10",
     "SCAN_STAGE_ORDER": "stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation"
   }
