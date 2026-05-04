@@ -32,18 +32,45 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const df = __importStar(require("durable-functions"));
+const node_fs_1 = require("node:fs");
+const node_path_1 = __importDefault(require("node:path"));
 const env_1 = require("../github/env");
 const workflowCompletion_1 = require("../github/workflowCompletion");
 const webhookValidation_1 = require("../github/webhookValidation");
 function issueInstanceId(owner, repo, issueNumber) {
     return `rw:${owner}:${repo}:issue:${issueNumber}`;
 }
+let cachedVersion;
+function getCurrentVersion() {
+    if (cachedVersion) {
+        return cachedVersion;
+    }
+    const packageJsonPath = node_path_1.default.resolve(process.cwd(), "package.json");
+    const packageJson = JSON.parse((0, node_fs_1.readFileSync)(packageJsonPath, "utf8"));
+    cachedVersion = packageJson.version ?? "0.0.0";
+    return cachedVersion;
+}
+function withVersion(body) {
+    return {
+        version: getCurrentVersion(),
+        ...body
+    };
+}
+function jsonResponse(status, body) {
+    return {
+        status,
+        jsonBody: withVersion(body)
+    };
+}
 function accepted(body) {
     return {
         status: 202,
-        jsonBody: body
+        jsonBody: withVersion(body)
     };
 }
 function isActiveStatus(status) {
@@ -73,20 +100,23 @@ async function getStatusIfExists(client, instanceId, context) {
 }
 df.app.client.http("githubWebhook", {
     route: "github/webhook",
-    methods: ["POST"],
+    methods: ["GET", "POST"],
     authLevel: "function",
     handler: async (request, client, context) => {
         try {
             context.info(`githubWebhook invoked: method=${request.method} url=${request.url} event=${request.headers.get("x-github-event") ?? "missing"} delivery=${request.headers.get("x-github-delivery") ?? "missing"}`);
+            if (request.method === "GET" || request.query.get("mode") === "version") {
+                return jsonResponse(200, {
+                    mode: "version",
+                    function: "githubWebhook"
+                });
+            }
             const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
             if (!webhookSecret) {
                 context.error("githubWebhook: missing required app setting GITHUB_WEBHOOK_SECRET");
-                return {
-                    status: 500,
-                    jsonBody: {
-                        error: "GITHUB_WEBHOOK_SECRET is not configured"
-                    }
-                };
+                return jsonResponse(500, {
+                    error: "GITHUB_WEBHOOK_SECRET is not configured"
+                });
             }
             const rawBody = await request.text();
             try {
@@ -98,21 +128,15 @@ df.app.client.http("githubWebhook", {
             }
             catch (error) {
                 context.warn(`Webhook validation failed: ${error instanceof Error ? error.message : String(error)}`);
-                return {
-                    status: 401,
-                    jsonBody: {
-                        error: "Invalid signature"
-                    }
-                };
+                return jsonResponse(401, {
+                    error: "Invalid signature"
+                });
             }
             const event = request.headers.get("x-github-event");
             if (!event) {
-                return {
-                    status: 400,
-                    jsonBody: {
-                        error: "Missing x-github-event header"
-                    }
-                };
+                return jsonResponse(400, {
+                    error: "Missing x-github-event header"
+                });
             }
             const payload = JSON.parse(rawBody);
             if (event === "issues") {
@@ -195,12 +219,9 @@ df.app.client.http("githubWebhook", {
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             context.error(`githubWebhook unhandled error: ${message}`);
-            return {
-                status: 500,
-                jsonBody: {
-                    error: "Internal server error"
-                }
-            };
+            return jsonResponse(500, {
+                error: "Internal server error"
+            });
         }
     }
 });

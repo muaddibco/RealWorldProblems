@@ -1,5 +1,7 @@
 import { HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import * as df from "durable-functions";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { getRepoConfig } from "../github/env";
 import { extractWorkflowCompletion } from "../github/workflowCompletion";
 import { verifyGitHubSignature } from "../github/webhookValidation";
@@ -8,10 +10,38 @@ function issueInstanceId(owner: string, repo: string, issueNumber: number): stri
   return `rw:${owner}:${repo}:issue:${issueNumber}`;
 }
 
-function accepted(body: unknown): HttpResponseInit {
+let cachedVersion: string | undefined;
+
+function getCurrentVersion(): string {
+  if (cachedVersion) {
+    return cachedVersion;
+  }
+
+  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
+
+  cachedVersion = packageJson.version ?? "0.0.0";
+  return cachedVersion;
+}
+
+function withVersion(body: Record<string, unknown>): Record<string, unknown> {
+  return {
+    version: getCurrentVersion(),
+    ...body
+  };
+}
+
+function jsonResponse(status: number, body: Record<string, unknown>): HttpResponseInit {
+  return {
+    status,
+    jsonBody: withVersion(body)
+  };
+}
+
+function accepted(body: Record<string, unknown>): HttpResponseInit {
   return {
     status: 202,
-    jsonBody: body
+    jsonBody: withVersion(body)
   };
 }
 
@@ -53,7 +83,7 @@ async function getStatusIfExists(client: df.DurableClient, instanceId: string, c
 
 df.app.client.http("githubWebhook", {
   route: "github/webhook",
-  methods: ["POST"],
+  methods: ["GET", "POST"],
   authLevel: "function",
   handler: async (request: HttpRequest, client: df.DurableClient, context: InvocationContext) => {
     try {
@@ -61,15 +91,19 @@ df.app.client.http("githubWebhook", {
         `githubWebhook invoked: method=${request.method} url=${request.url} event=${request.headers.get("x-github-event") ?? "missing"} delivery=${request.headers.get("x-github-delivery") ?? "missing"}`
       );
 
+      if (request.method === "GET" || request.query.get("mode") === "version") {
+        return jsonResponse(200, {
+          mode: "version",
+          function: "githubWebhook"
+        });
+      }
+
       const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
       if (!webhookSecret) {
         context.error("githubWebhook: missing required app setting GITHUB_WEBHOOK_SECRET");
-        return {
-          status: 500,
-          jsonBody: {
-            error: "GITHUB_WEBHOOK_SECRET is not configured"
-          }
-        };
+        return jsonResponse(500, {
+          error: "GITHUB_WEBHOOK_SECRET is not configured"
+        });
       }
 
       const rawBody = await request.text();
@@ -82,22 +116,16 @@ df.app.client.http("githubWebhook", {
         });
       } catch (error: unknown) {
         context.warn(`Webhook validation failed: ${error instanceof Error ? error.message : String(error)}`);
-        return {
-          status: 401,
-          jsonBody: {
-            error: "Invalid signature"
-          }
-        };
+        return jsonResponse(401, {
+          error: "Invalid signature"
+        });
       }
 
       const event = request.headers.get("x-github-event");
       if (!event) {
-        return {
-          status: 400,
-          jsonBody: {
-            error: "Missing x-github-event header"
-          }
-        };
+        return jsonResponse(400, {
+          error: "Missing x-github-event header"
+        });
       }
 
       const payload = JSON.parse(rawBody) as Record<string, unknown>;
@@ -198,12 +226,9 @@ df.app.client.http("githubWebhook", {
       const message = error instanceof Error ? error.message : String(error);
       context.error(`githubWebhook unhandled error: ${message}`);
 
-      return {
-        status: 500,
-        jsonBody: {
-          error: "Internal server error"
-        }
-      };
+      return jsonResponse(500, {
+        error: "Internal server error"
+      });
     }
   }
 });
