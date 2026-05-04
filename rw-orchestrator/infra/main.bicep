@@ -21,9 +21,6 @@ param githubWorkflowRef string = 'main'
 @description('Batch size for backlog scanner.')
 param scanBatchSize string = '10'
 
-@description('Maximum number of stages per orchestration.')
-param maxStagesPerOrchestration string = '8'
-
 @description('Comma-separated stage processing order for scanner.')
 param scanStageOrder string = 'stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation'
 
@@ -208,10 +205,6 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'SCAN_BATCH_SIZE'
           value: scanBatchSize
-        }
-        {
-          name: 'MAX_STAGES_PER_ORCHESTRATION'
-          value: maxStagesPerOrchestration
         }
         {
           name: 'SCAN_STAGE_ORDER'

@@ -13,10 +13,7 @@ function addMinutes(date: Date, minutes: number): Date {
 df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
   const input = context.df.getInput() as OrchestrationInput;
 
-  let transitions = 0;
-  const maxTransitions = Number(process.env.MAX_STAGES_PER_ORCHESTRATION ?? "8");
-
-  while (transitions < maxTransitions) {
+  while (true) {
     const issue = yield context.df.callActivityWithRetry("GetIssueActivity", retryOptions, input);
     const stage = (yield context.df.callActivity("DecideNextStageActivity", {
       issue,
@@ -105,13 +102,5 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
         terminalReason: verification.reason
       };
     }
-
-    transitions += 1;
   }
-
-  return {
-    status: "max-transitions-reached",
-    issueNumber: input.issueNumber,
-    maxTransitions
-  };
 });

@@ -27,9 +27,6 @@ param(
   [string]$ScanBatchSize = "10",
 
   [Parameter(Mandatory = $false)]
-  [string]$MaxStagesPerOrchestration = "8",
-
-  [Parameter(Mandatory = $false)]
   [string]$ScanStageOrder = "stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation",
 
   [Parameter(Mandatory = $false)]
@@ -105,7 +102,6 @@ try {
   azd env set GITHUB_TOKEN $GitHubToken
   azd env set GITHUB_WEBHOOK_SECRET $GitHubWebhookSecret
   azd env set SCAN_BATCH_SIZE $ScanBatchSize
-  azd env set MAX_STAGES_PER_ORCHESTRATION $MaxStagesPerOrchestration
   azd env set SCAN_STAGE_ORDER $ScanStageOrder
 
   # Guard against azd deploy ambiguity when more than one host is tagged for this service.
@@ -117,8 +113,8 @@ try {
 
     if ($taggedHosts.Count -gt 1) {
       if ([string]::IsNullOrWhiteSpace($envFunctionAppName)) {
-        $hostNames = ($taggedHosts | ForEach-Object { $_.name }) -join ", "
-        throw "Found multiple host resources tagged with azd-service-name=orchestrator in resource group '$envResourceGroup': $hostNames. Run azd provision to refresh environment outputs, then rerun with -AutoResolveServiceTagConflicts, or manually remove the tag from non-target hosts."
+        $siteNames = ($taggedHosts | ForEach-Object { $_.name }) -join ", "
+        throw "Found multiple host resources tagged with azd-service-name=orchestrator in resource group '$envResourceGroup': $siteNames. Run azd provision to refresh environment outputs, then rerun with -AutoResolveServiceTagConflicts, or manually remove the tag from non-target hosts."
       }
 
       $nonTargetHosts = @($taggedHosts | Where-Object { $_.name -ne $envFunctionAppName })
@@ -126,17 +122,17 @@ try {
       if ($nonTargetHosts.Count -gt 0) {
         if ($AutoResolveServiceTagConflicts) {
           Write-Host "Resolving azd-service-name tag conflicts. Keeping '$envFunctionAppName' and removing tag from non-target hosts..."
-          foreach ($host in $nonTargetHosts) {
-            Write-Host "Removing azd-service-name tag from host '$($host.name)'"
-            az tag update --resource-id $host.id --operation delete --tags azd-service-name | Out-Null
+          foreach ($site in $nonTargetHosts) {
+            Write-Host "Removing azd-service-name tag from host '$($site.name)'"
+            az tag update --resource-id $site.id --operation delete --tags azd-service-name | Out-Null
             if ($LASTEXITCODE -ne 0) {
-              throw "Failed to remove azd-service-name tag from host '$($host.name)'."
+              throw "Failed to remove azd-service-name tag from host '$($site.name)'."
             }
           }
         }
         else {
-          $hostNames = ($taggedHosts | ForEach-Object { $_.name }) -join ", "
-          throw "Detected multiple host resources tagged with azd-service-name=orchestrator in resource group '$envResourceGroup': $hostNames. Expected target host is '$envFunctionAppName'. Rerun with -AutoResolveServiceTagConflicts or remove the tag from non-target hosts manually."
+          $siteNames = ($taggedHosts | ForEach-Object { $_.name }) -join ", "
+          throw "Detected multiple host resources tagged with azd-service-name=orchestrator in resource group '$envResourceGroup': $siteNames. Expected target host is '$envFunctionAppName'. Rerun with -AutoResolveServiceTagConflicts or remove the tag from non-target hosts manually."
         }
       }
     }

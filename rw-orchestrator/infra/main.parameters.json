@@ -20,9 +20,6 @@
     "scanBatchSize": {
       "value": "${SCAN_BATCH_SIZE}"
     },
-    "maxStagesPerOrchestration": {
-      "value": "${MAX_STAGES_PER_ORCHESTRATION}"
-    },
     "scanStageOrder": {
       "value": "${SCAN_STAGE_ORDER}"
     },

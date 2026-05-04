@@ -9,7 +9,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "10-normalize.lock.yml",
         expectedNextLabels: ["stage/1-normalized", "status/needs-info"],
-        timeoutMinutes: 30,
+        timeoutMinutes: 15,
         terminalLabels: ["status/needs-info"]
     },
     {
@@ -19,7 +19,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "20-dedupe.lock.yml",
         expectedNextLabels: ["stage/2-deduped", "stage/9-archived"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "software-fit",
@@ -28,7 +28,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "30-software-fit.lock.yml",
         expectedNextLabels: ["stage/3-scored", "stage/9-archived"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "score",
@@ -37,7 +37,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "40-score.lock.yml",
         expectedNextLabels: ["stage/4-solution"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "solution",
@@ -46,7 +46,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "50-solution.lock.yml",
         expectedNextLabels: ["stage/ai-defensibility"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "ai-defensibility",
@@ -55,7 +55,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "55-ai-defensibility.lock.yml",
         expectedNextLabels: ["stage/5-competitors"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "competitors",
@@ -64,7 +64,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "60-competitors.lock.yml",
         expectedNextLabels: ["stage/6-shortlist"],
-        timeoutMinutes: 45
+        timeoutMinutes: 15
     },
     {
         id: "wedge",
@@ -73,7 +73,7 @@ exports.STAGES = [
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "70-wedge-filter.lock.yml",
         expectedNextLabels: ["stage/7-validation", "stage/9-archived", "stage/6-shortlist"],
-        timeoutMinutes: 30
+        timeoutMinutes: 15
     },
     {
         id: "validation",
@@ -81,8 +81,8 @@ exports.STAGES = [
         requiredLabels: ["type/problem", "stage/7-validation"],
         forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
         workflowId: "90-validation-plan.lock.yml",
-        expectedNextLabels: ["stage/7-validation"],
-        timeoutMinutes: 45
+        expectedNextLabels: [],
+        timeoutMinutes: 15
     }
 ];
 exports.STAGE_LABEL_PRIORITY = exports.STAGES.map((stage) => stage.stageLabel);
