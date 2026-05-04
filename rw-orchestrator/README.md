@@ -122,6 +122,31 @@ Example:
    -GitHubEvent workflow_run
 ```
 
+## Verifying deployed version
+
+Use `deploy/get-version.ps1` to confirm which version of the orchestrator is currently running in Azure.
+
+```powershell
+.\deploy\get-version.ps1 -AzdEnvironment dev
+```
+
+Optional parameters:
+- `-FunctionAppName`
+- `-ResourceGroup`
+- `-Code` (function key; if omitted, script resolves `masterKey`)
+
+The script calls `GET /api/github/webhook?mode=version` and prints a JSON response such as:
+
+```json
+{
+  "version": "0.1.0",
+  "mode": "version",
+  "function": "githubWebhook"
+}
+```
+
+The `version` field reflects the `version` field in `package.json` at the time the package was built and deployed. You can also hit the endpoint directly from a browser or `curl` using the same URL.
+
 ## Durable instance management scripts
 
 Use these scripts to inspect and control a specific Durable Functions orchestration instance by `instanceId`.
