@@ -29,6 +29,7 @@ interface RawIssueLabel {
 }
 
 interface RawIssueLike {
+  state?: string;
   labels?: Array<string | RawIssueLabel>;
 }
 
@@ -187,6 +188,10 @@ export class GitHubClient {
       }
 
       for (const subIssue of subIssues) {
+        if (subIssue.state !== "open") {
+          continue;
+        }
+
         const labels = (subIssue.labels ?? []).map((entry) =>
           typeof entry === "string" ? entry : (entry as RawIssueLabel).name ?? ""
         );
