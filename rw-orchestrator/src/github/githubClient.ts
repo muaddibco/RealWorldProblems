@@ -170,41 +170,6 @@ export class GitHubClient {
     }));
   }
 
-  async hasSubIssueWithLabel(owner: string, repo: string, issueNumber: number, label: string): Promise<boolean> {
-    let page = 1;
-
-    while (true) {
-      const response = await this.octokit.request("GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues", {
-        owner,
-        repo,
-        issue_number: issueNumber,
-        per_page: 100,
-        page
-      });
-
-      const subIssues = response.data as RawIssueLike[];
-      if (subIssues.length === 0) {
-        return false;
-      }
-
-      for (const subIssue of subIssues) {
-        const labels = (subIssue.labels ?? []).map((entry) =>
-          typeof entry === "string" ? entry : (entry as RawIssueLabel).name ?? ""
-        );
-
-        if (labels.includes(label)) {
-          return true;
-        }
-      }
-
-      if (subIssues.length < 100) {
-        return false;
-      }
-
-      page += 1;
-    }
-  }
-
   async dispatchWorkflow(request: DispatchWorkflowRequest): Promise<void> {
     await this.octokit.actions.createWorkflowDispatch({
       owner: request.owner,

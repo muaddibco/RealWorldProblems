@@ -75,14 +75,7 @@ df.app.activity("GetIssueActivity", {
 });
 df.app.activity("DecideNextStageActivity", {
     handler: async (input) => {
-        const labels = labelNames(input.issue);
-        const shouldCheckExperimentSubIssues = labels.includes("stage/7-validation");
-        let hasExperimentSubIssue = false;
-        if (shouldCheckExperimentSubIssues) {
-            const github = await githubClient_1.GitHubClient.create();
-            hasExperimentSubIssue = await github.hasSubIssueWithLabel(input.owner, input.repo, input.issue.number, "type/experiment");
-        }
-        return (0, stageDecision_1.decideNextStage)(input.issue, input.stages, { hasExperimentSubIssue });
+        return (0, stageDecision_1.decideNextStage)(input.issue, input.stages);
     }
 });
 df.app.activity("ClaimIssueActivity", {
