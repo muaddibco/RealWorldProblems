@@ -30,7 +30,7 @@ Prefer only issues that satisfy all of the following:
 - `type/problem`
 - `wedge/credible`
 - `score/top-10` or `score/top-50`
-- `stage/6-shortlist` or `stage/7-validation`
+- `stage/6-shortlist` or `stage/7-validation` or `stage/7.1-validated`
 - not `agentic-workflows`
 - not `stage/9-archived`
 
@@ -44,7 +44,7 @@ If evidence needed for ranking is missing from those islands, note the limitatio
 Order eligible items using this priority stack:
 
 1) **Validation readiness**
-- prefer `stage/7-validation` over `stage/6-shortlist`
+- prefer `stage/7.1-validated` over `stage/7-validation` over `stage/6-shortlist`
 - rationale: once the wedge is credible, items ready for validation now are more useful than items still waiting to be pushed forward
 
 2) **Score bucket**
@@ -77,7 +77,7 @@ Use the scorecard, AI defensibility, and wedge rationale to break ties. Prefer i
 - Do **not** reward ambition, broad market size, or theoretical upside over validation readiness.
 - If two items are similar, prefer the one with stronger evidence and higher confidence.
 - If an item is attractive but the wedge rationale still reads vague or fragile, call that out and rank it lower.
-- A `stage/6-shortlist` item may appear in the Top 10, but it should usually rank below a similarly strong `stage/7-validation` item.
+- A `stage/6-shortlist` item may appear in the Top 10, but it should usually rank below a similarly strong `stage/7-validation` and `stage/7.1-validated` items.
 - If an issue is only strong because of raw pain but looks hard to validate in practice, rank it lower.
 
 ## What to look for in the scorecard island
@@ -120,6 +120,7 @@ Write a skimmable daily report with these sections.
 ### 1) Header summary
 Include:
 - total eligible items found
+- how many are in `stage/7.1-validated`
 - how many are in `stage/7-validation`
 - how many are in `stage/6-shortlist`
 - the clearest pipeline bottleneck

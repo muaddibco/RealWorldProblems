@@ -64,7 +64,7 @@ This workflow is manual-only.
 
 ## Operate ONLY on issues that:
 - have label `type/problem`
-- have label `stage/7-validation`
+- have label `stage/7.1-validated`
 - have label `wedge/credible`
 - have one of: `score/top-10`, `score/top-50`
 - have one of: `risk/low`, `risk/medium`
@@ -98,7 +98,7 @@ Do NOT stop after the first batch merely because the current batch has fewer tha
 ### Base query
 Use this broad base query for discovery:
 
-`repo:<OWNER>/<REPO> is:issue is:open label:"type/problem" label:"stage/7-validation" label:"wedge/credible" -label:"agentic-workflows" -label:"marketing-sales/very-easy" -label:"marketing-sales/easy" -label:"marketing-sales/medium" -label:"marketing-sales/hard" -label:"marketing-sales/very-hard"`
+`repo:<OWNER>/<REPO> is:issue is:open label:"type/problem" label:"stage/7.1-validated" label:"wedge/credible" -label:"agentic-workflows" -label:"marketing-sales/very-easy" -label:"marketing-sales/easy" -label:"marketing-sales/medium" -label:"marketing-sales/hard" -label:"marketing-sales/very-hard"`
 
 ### Exact eligibility filter
 A candidate is eligible only if ALL are true:

@@ -56,7 +56,7 @@ Consider only issues that:
 - have label `type/problem`
 - have label `wedge/credible`
 - have label `score/top-10` or `score/top-50`
-- are in `stage/6-shortlist` or `stage/7-validation`
+- are in `stage/6-shortlist` or `stage/7-validation` or `stage/7.1-validated`
 - do NOT have label `agentic-workflows`
 - do NOT have label `stage/9-archived`
 
@@ -66,7 +66,7 @@ If an issue is missing a scorecard island or wedge island, treat it as ineligibl
 Rank eligible issues using the following order of priority:
 
 1. **Validation readiness**
-   - prefer `stage/7-validation` over `stage/6-shortlist`
+   - prefer `stage/7.1-validated` over `stage/7-validation` over `stage/6-shortlist`
    - rationale: once a credible wedge exists, the most valuable daily shortlist is what is ready for validation now
 
 2. **Score bucket**
@@ -99,7 +99,7 @@ Rank eligible issues using the following order of priority:
 - Do **not** promote an issue only because the problem is severe; it should already have a credible wedge.
 - If two issues are similar, prefer the one with higher confidence and stronger evidence, not the one with the more ambitious idea.
 - If an issue has `wedge/credible` but the wedge rationale is still vague, mention that explicitly in the report and rank it lower.
-- If an issue is in `stage/6-shortlist`, it can still appear in the report, but should usually rank below a similarly strong item already in `stage/7-validation`.
+- If an issue is in `stage/6-shortlist`, it can still appear in the report, but should usually rank below a similarly strong item already in `stage/7-validation` or `stage/7.1-validated`.
 - Do **not** let AI defensibility outweigh clear validation readiness, stronger evidence, or a substantially better wedge.
 - Use AI defensibility mainly as a display signal and a tie-breaker among otherwise similar candidates.
 - If an issue has weak AI defensibility but remains wedge-credible and validation-ready, include it when warranted, but call out that it should be tested against generic AI plus manual workflow.
@@ -110,6 +110,7 @@ Create ONE issue titled `[top10] <YYYY-MM-DD>` containing:
 ### 1) Header summary
 A short summary with:
 - how many eligible items were found
+- how many were `stage/7.1-validated`
 - how many were `stage/7-validation`
 - how many were `stage/6-shortlist`
 - how many eligible items are `ai-defensibility/strong`, `medium`, and `weak` (when available)
@@ -132,7 +133,7 @@ Include up to 5 additional issues that almost made the list, with a short note o
 - weaker evidence
 - higher risk
 - wedge credible but still vague
-- not yet at `stage/7-validation`
+- not yet at `stage/7-validation` or `stage/7.1-validated`
 - weaker AI defensibility
 - missing AI defensibility evaluation
 

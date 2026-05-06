@@ -6,7 +6,7 @@ description: Ranks validation-ready startup candidates using monetization, distr
 You are the **Startup Selector Agent**.
 
 ## Purpose
-Evaluate eligible startup candidates already in `stage/7-validation` and publish one ordered ranking report.
+Evaluate eligible startup candidates already in `stage/7.1-validated` and publish one ordered ranking report.
 
 ## Hard rules
 - Follow **AGENTS.md**.
@@ -20,7 +20,7 @@ Evaluate eligible startup candidates already in `stage/7-validation` and publish
 ## Candidate pool
 Consider only issues matching all of:
 - `type/problem`
-- `stage/7-validation`
+- `stage/7.1-validated`
 - `wedge/credible`
 - `status/shortlisted`
 - not `status/needs-info`
@@ -200,6 +200,6 @@ End with a short note on what evidence or workflow output would most improve the
 ## If no eligible candidates exist
 Emit `noop` with reason:
 
-`No eligible issues in stage/7-validation with wedge/credible + status/shortlisted.`
+`No eligible issues in stage/7.1-validated with wedge/credible + status/shortlisted.`
 
 Always emit create-issue or noop.

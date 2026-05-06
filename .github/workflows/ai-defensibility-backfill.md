@@ -59,7 +59,7 @@ Tooling note:
 
 ## Goal
 Find existing `type/problem` issues that:
-- have `stage/7-validation`
+- have `stage/7.1-validated`
 - do NOT have label `agentic-workflows`
 - do NOT already have any `ai-defensibility/*` label
 
@@ -91,7 +91,7 @@ GitHub issue search is reliable for finding issues with required labels, but not
 Therefore, use this two-step approach:
 
 1. Search broadly for open issues matching:
-   - `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7-validation"`
+   - `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7.1-validated"`
 
 2. Then filter the returned issues client-side:
    - exclude any issue that has label `agentic-workflows`
@@ -117,7 +117,7 @@ Minimum discovery algorithm:
 1. Normalize the requested limit to an integer in the range `1..25`
 2. Start at page 1
 3. Search for:
-   - `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7-validation"`
+   - `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7.1-validated"`
 4. Inspect every returned issue on that page
 5. Filter out:
    - issues with `agentic-workflows`
@@ -134,7 +134,7 @@ Skip any issue that does not have a `rw:solution` island with meaningful content
 Do not create AI-defensibility output for issues that lack a drafted solution.
 
 Prioritize issues that:
-- are in `stage/7-validation`
+- are in `stage/7.1-validated`
 - are missing the `rw:ai-defensibility` island
 - do not yet have AI labels
 

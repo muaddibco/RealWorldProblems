@@ -58,7 +58,7 @@ It is ranking the best **startup opportunities to focus on next**, using the evi
 Find `type/problem` issues that are:
 - `wedge/credible`
 - `status/shortlisted`
-- `stage/7-validation`
+- `stage/7.1-validated`
 - NOT `status/needs-info`
 - NOT `stage/9-archived`
 - NOT `agentic-workflows`

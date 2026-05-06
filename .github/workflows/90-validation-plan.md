@@ -84,6 +84,8 @@ Valid endings are only:
 - `add_comment` plus `add_labels` when info is missing
 - `noop` when the issue should not be processed
 
+When the validation plan is created successfully, the run must include label updates that remove `stage/7-validation` and add `stage/7.1-validated`.
+
 Do not end with prose-only output.
 Do not stop after analysis.
 A run with no safe-output tool call is invalid.
@@ -208,8 +210,9 @@ If an experiment issue is created, add its reference in the parent validation is
 ## Label handling
 If the validation plan is created successfully:
 - optionally remove `status/needs-info` if the issue is now sufficiently complete
+- remove `stage/7-validation`
+- add `stage/7.1-validated`
 
-Do **not** advance the issue to another stage here.
-This stage prepares validation work; it does not claim validation has been completed.
+This stage marks validation planning as completed for the issue.
 
 Always emit safe outputs or noop.

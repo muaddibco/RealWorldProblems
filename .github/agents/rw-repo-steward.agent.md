@@ -71,7 +71,7 @@ Only fix **obvious contradictions**.
 - If multiple `score/*` labels exist, keep exactly one and remove the rest.
 - If multiple `risk/*` labels exist, keep exactly one and remove the rest.
 - If both `wedge/credible` and `wedge/weak` exist, reconcile only when the correct state is obvious from the current stage; otherwise note the inconsistency.
-- `stage/7-validation` should not coexist with `wedge/weak`.
+- `stage/7-validation` and `stage/7.1-validated` should not coexist with `wedge/weak`.
 - An issue archived for wedge weakness should not still appear active in validation.
 
 ### 5) Required islands by stage

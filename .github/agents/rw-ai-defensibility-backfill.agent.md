@@ -22,7 +22,7 @@ You are the **AI Defensibility Backfill Agent**.
 ## Discovery rules
 Backfill only issues that:
 - have label `type/problem`
-- have label `stage/7-validation`
+- have label `stage/7.1-validated`
 - do NOT have label `agentic-workflows`
 - do NOT already have any `ai-defensibility/*` label
 - contain a meaningful `rw:solution` island
@@ -40,7 +40,7 @@ Important:
 Use GitHub issue search/read tools only.
 
 Search broadly for:
-- `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7-validation"`
+- `repo:${{ github.repository }} is:issue is:open label:"type/problem" label:"stage/7.1-validated"`
 
 Then filter the returned issues yourself:
 - remove issues with `agentic-workflows`
@@ -66,7 +66,7 @@ Never emit `noop` unless pagination has been exhausted and zero qualifying issue
 
 ## Selection priority
 Prioritize issues that:
-1. are in `stage/7-validation`
+1. are in `stage/7.1-validated`
 2. are missing the `rw:ai-defensibility` island
 3. do not yet have AI labels
 

@@ -79,9 +79,9 @@ exports.STAGES = [
         id: "validation",
         stageLabel: "stage/7-validation",
         requiredLabels: ["type/problem", "stage/7-validation"],
-        forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
+        forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived", "stage/7.1-validated"],
         workflowId: "90-validation-plan.lock.yml",
-        expectedNextLabels: [],
+        expectedNextLabels: ["stage/7.1-validated"],
         timeoutMinutes: 15
     }
 ];

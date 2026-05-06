@@ -24,7 +24,7 @@ You are the **Marketing & Sales Complexity Agent**.
 ## Eligibility rules
 Process only issues that have:
 - `type/problem`
-- `stage/7-validation`
+- `stage/7.1-validated`
 - `wedge/credible`
 - (`score/top-10` OR `score/top-50`)
 - (`risk/low` OR `risk/medium`)
@@ -45,7 +45,7 @@ Maintain:
 ### Base discovery query
 Use the broad base query:
 - `type/problem`
-- `stage/7-validation`
+- `stage/7.1-validated`
 - `wedge/credible`
 - exclude `agentic-workflows`
 - exclude all `marketing-sales/*` labels

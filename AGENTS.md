@@ -35,6 +35,7 @@ Agents operate on GitHub Issues (`type/problem`) and move them through structure
 - `stage/5-competitors`
 - `stage/6-shortlist`
 - `stage/7-validation`
+- `stage/7.1-validated`
 - `stage/8-selected`
 - `stage/9-archived`
 
@@ -49,6 +50,7 @@ Agents operate on GitHub Issues (`type/problem`) and move them through structure
 - `stage/5-competitors` — direct competitors, substitutes, and market context are researched
 - `stage/6-shortlist` — wedge quality is decided: credible wedge vs weak wedge
 - `stage/7-validation` — next validation experiment is planned for a wedge-credible opportunity
+- `stage/7.1-validated` — validation done and experiment created for a wedge-credible opportunity
 - `stage/8-selected` — chosen for focused execution / incubation
 - `stage/9-archived` — removed from the active pipeline with exactly one archive reason
 
