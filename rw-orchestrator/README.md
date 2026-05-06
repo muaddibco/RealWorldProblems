@@ -61,7 +61,7 @@ Use `GITHUB_WEBHOOK_SECRET` for HMAC signature validation.
 
 ## Required workflow updates
 
-Stage workflow source files should include optional `orchestration_id` input and preserve existing `issue_number` + `trigger_label` inputs.
+Stage workflow source files should include optional `orchestration_id` input and preserve existing `issue_number` input.
 
 Files:
 - `.github/workflows/10-normalize.md`

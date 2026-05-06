@@ -145,7 +145,6 @@ df.app.activity("DispatchWorkflowActivity", {
       ref,
       inputs: {
         issue_number: String(input.issueNumber),
-        trigger_label: input.stage.stageLabel,
         orchestration_id: input.orchestrationId
       }
     });

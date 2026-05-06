@@ -79,8 +79,7 @@ jobs:
               workflow_id,
               ref,
               inputs: {
-                issue_number: String(issue.number),
-                trigger_label: label
+                issue_number: String(issue.number)
               }
             });
 

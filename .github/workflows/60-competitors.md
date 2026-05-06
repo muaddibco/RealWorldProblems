@@ -8,10 +8,6 @@ on:
         description: "Target issue number"
         required: true
         type: string
-      trigger_label:
-        description: "Stage label that triggered this run"
-        required: true
-        type: string
       orchestration_id:
         description: "Durable orchestration instance ID for correlation"
         required: false
@@ -77,7 +73,6 @@ safe-outputs:
 ## Dispatch context
 
 - Target issue: #${{ inputs.issue_number }}
-- Trigger label: `${{ inputs.trigger_label }}`
 - Orchestration ID: `${{ inputs.orchestration_id }}`
 
 Before doing anything else:
