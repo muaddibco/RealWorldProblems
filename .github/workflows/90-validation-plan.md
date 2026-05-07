@@ -116,13 +116,15 @@ Choose the single highest-value uncertainty, or at most two closely related unce
 
 ## Preconditions
 Expected inputs before planning:
-- scorecard island present
-- wedge island present
-- solution island present
+- scorecard island present (`<!-- rw:scorecard:start -->` or `<!-- gh-aw-island-start:30-scorer -->`)
+- wedge island present (`<!-- rw:wedge:start -->` or `<!-- gh-aw-island-start:70-wedge-filter -->`)
+- solution island present (`<!-- rw:solution:start -->` or `<!-- gh-aw-island-start:40-solution -->`)
+
+Accept either the canonical `rw:*` marker format or the `gh-aw-island-start:*` format — both are valid.
 
 Competitors island is helpful context and should usually exist by this stage, but the plan may still proceed if the scorecard, solution, and wedge are all present and sufficiently specific.
 
-If any required island is clearly missing:
+If any required island is clearly missing (neither format is present):
 - add one short comment explaining what is missing
 - add label: status/needs-info
 - stop

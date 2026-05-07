@@ -102,11 +102,13 @@ Never rely on implicit targeting.
 This stage decides the **go-to-market wedge**, not the underlying problem attractiveness.
 
 Expected evidence before deciding:
-- scorecard island present
-- solution island present
-- competitors island present
+- scorecard island present (`<!-- rw:scorecard:start -->` or `<!-- gh-aw-island-start:30-scorer -->`)
+- solution island present (`<!-- rw:solution:start -->` or `<!-- gh-aw-island-start:40-solution -->`)
+- competitors island present (`<!-- rw:competitors:start -->` or `<!-- gh-aw-island-start:60-competitors -->`)
 
-If one of those is clearly missing:
+Accept either the canonical `rw:*` marker format or the `gh-aw-island-start:*` format — both are valid.
+
+If one of those is clearly missing (neither format is present):
 - add one short comment explaining what is missing
 - add label: status/needs-info
 - stop
