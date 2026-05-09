@@ -107,6 +107,12 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
         const timeoutTask = context.df.createTimer(timeoutAt);
         const winner = yield context.df.Task.any([completionEvent, timeoutTask]);
         if (winner === timeoutTask) {
+            const timedOutIssue = yield context.df.callActivityWithRetry("GetIssueActivity", retryOptions, input);
+            const hasProcessingLabel = timedOutIssue.labels.some((label) => label.name === "rw/processing");
+            if (!hasProcessingLabel) {
+                timeoutTask.cancel();
+                continue;
+            }
             yield context.df.callActivityWithRetry("MarkIssueFailedActivity", retryOptions, {
                 ...input,
                 stageId: stage.id,
