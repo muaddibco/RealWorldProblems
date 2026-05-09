@@ -21,6 +21,8 @@ function getDispatchCooldownMs(): number {
 }
 
 function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undefined {
+  let latestTimestamp: Date | undefined;
+
   for (const comment of comments) {
     const markerMatch = comment.body.match(DISPATCH_MARKER_REGEX);
     if (!markerMatch) {
@@ -28,12 +30,16 @@ function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undef
     }
 
     const timestamp = new Date(markerMatch[1]);
-    if (!Number.isNaN(timestamp.getTime())) {
-      return timestamp;
+    if (Number.isNaN(timestamp.getTime())) {
+      continue;
+    }
+
+    if (!latestTimestamp || timestamp.getTime() > latestTimestamp.getTime()) {
+      latestTimestamp = timestamp;
     }
   }
 
-  return undefined;
+  return latestTimestamp;
 }
 
 function labelNames(issue: GitHubIssue): string[] {
