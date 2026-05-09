@@ -65,7 +65,7 @@ jobs:
             }
 
             const stageLabelPattern = /^stage\/\d+-/;
-            const ignoredLabel = 'agentic-workflows';
+            const ignoredLabels = ['agentic-workflows', 'rw/processing'];
             const experimentLabel = 'type/experiment';
 
             async function hasExperimentSubIssue(issueNumber) {
@@ -129,7 +129,7 @@ jobs:
 
               for (const issue of issues) {
                 const labels = issue.labels.map((l) => typeof l === 'string' ? l : l.name).filter(Boolean);
-                if (labels.includes(ignoredLabel)) continue;
+                if (ignoredLabels.some(label => labels.includes(label))) continue;
 
                 const stageLabels = labels.filter((label) => stageLabelPattern.test(label));
                 if (stageLabels.length !== 1) continue;
