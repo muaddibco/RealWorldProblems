@@ -20,16 +20,21 @@ function getDispatchCooldownMs(): number {
   return DISPATCH_COOLDOWN_SECONDS * 1000;
 }
 
-function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undefined {
+function findLatestDispatchTimestamp(comments: { body: string, created_at: string }[]): Date | undefined {
   for (const comment of comments) {
     const markerMatch = comment.body.match(DISPATCH_MARKER_REGEX);
     if (!markerMatch) {
       continue;
     }
 
-    const timestamp = new Date(markerMatch[1]);
-    if (!Number.isNaN(timestamp.getTime())) {
-      return timestamp;
+    const markerTimestamp = new Date(markerMatch[1]);
+    if (!Number.isNaN(markerTimestamp.getTime())) {
+      return markerTimestamp;
+    }
+
+    const commentTimestamp = new Date(comment.created_at);
+    if (!Number.isNaN(commentTimestamp.getTime())) {
+      return commentTimestamp;
     }
   }
 

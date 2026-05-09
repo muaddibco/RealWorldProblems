@@ -54,9 +54,13 @@ function findLatestDispatchTimestamp(comments) {
         if (!markerMatch) {
             continue;
         }
-        const timestamp = new Date(markerMatch[1]);
-        if (!Number.isNaN(timestamp.getTime())) {
-            return timestamp;
+        const markerTimestamp = new Date(markerMatch[1]);
+        if (!Number.isNaN(markerTimestamp.getTime())) {
+            return markerTimestamp;
+        }
+        const commentTimestamp = new Date(comment.created_at);
+        if (!Number.isNaN(commentTimestamp.getTime())) {
+            return commentTimestamp;
         }
     }
     return undefined;

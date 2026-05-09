@@ -1,6 +1,6 @@
 {
   "name": "rw-orchestrator",
-  "version": "0.5.2",
+  "version": "0.6.2",
   "private": true,
   "type": "commonjs",
   "main": "dist/src/index.js",

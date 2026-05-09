@@ -39,9 +39,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const df = __importStar(require("durable-functions"));
 const node_fs_1 = require("node:fs");
 const node_path_1 = __importDefault(require("node:path"));
+const stages_1 = require("../domain/stages");
 const env_1 = require("../github/env");
 const workflowCompletion_1 = require("../github/workflowCompletion");
 const webhookValidation_1 = require("../github/webhookValidation");
+const STAGE_LABELS = new Set(stages_1.STAGES.map((stage) => stage.stageLabel));
 function issueInstanceId(owner, repo, issueNumber) {
     return `rw:${owner}:${repo}:issue:${issueNumber}`;
 }
@@ -141,8 +143,13 @@ df.app.client.http("githubWebhook", {
             const payload = JSON.parse(rawBody);
             if (event === "issues") {
                 const action = typeof payload.action === "string" ? payload.action : "";
-                const acceptedActions = new Set(["opened", "edited", "labeled", "unlabeled"]);
-                if (!acceptedActions.has(action)) {
+                const labelName = payload.label?.name ?? "";
+                const shouldProceed = (action === "labeled" && STAGE_LABELS.has(labelName)) ||
+                    (action === "unlabeled" && labelName === "status/needs-info");
+                if (!shouldProceed) {
+                    if (action === "labeled" || action === "unlabeled") {
+                        return accepted({ ignored: true, reason: `issues action on unsupported label: ${action} ${labelName}` });
+                    }
                     return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
                 }
                 const repository = payload.repository;

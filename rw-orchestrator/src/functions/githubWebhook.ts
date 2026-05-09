@@ -2,9 +2,12 @@ import { HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functio
 import * as df from "durable-functions";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { STAGES } from "../domain/stages";
 import { getRepoConfig } from "../github/env";
 import { extractWorkflowCompletion } from "../github/workflowCompletion";
 import { verifyGitHubSignature } from "../github/webhookValidation";
+
+const STAGE_LABELS = new Set(STAGES.map((stage) => stage.stageLabel));
 
 function issueInstanceId(owner: string, repo: string, issueNumber: number): string {
   return `rw:${owner}:${repo}:issue:${issueNumber}`;
@@ -132,8 +135,15 @@ df.app.client.http("githubWebhook", {
 
       if (event === "issues") {
         const action = typeof payload.action === "string" ? payload.action : "";
-        const acceptedActions = new Set(["opened", "edited", "labeled", "unlabeled"]);
-        if (!acceptedActions.has(action)) {
+        const labelName = ((payload.label as Record<string, unknown> | undefined)?.name as string) ?? "";
+        const shouldProceed =
+          (action === "labeled" && STAGE_LABELS.has(labelName)) ||
+          (action === "unlabeled" && labelName === "status/needs-info");
+
+        if (!shouldProceed) {
+          if (action === "labeled" || action === "unlabeled") {
+            return accepted({ ignored: true, reason: `issues action on unsupported label: ${action} ${labelName}` });
+          }
           return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
         }
 

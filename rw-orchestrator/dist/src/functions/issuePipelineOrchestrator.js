@@ -41,6 +41,13 @@ retryOptions.maxRetryIntervalInMilliseconds = 60000;
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60 * 1000);
 }
+function parseUtcDate(value) {
+    if (!value) {
+        return undefined;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
 df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
     const input = context.df.getInput();
     while (true) {
@@ -79,6 +86,11 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
                 ...input,
                 stageId: stage.id
             });
+            const waitUntil = parseUtcDate(dispatch.waitUntilUtc);
+            if (waitUntil && waitUntil.getTime() > context.df.currentUtcDateTime.getTime()) {
+                yield context.df.createTimer(waitUntil);
+                continue;
+            }
             return {
                 status: "cooldown-active",
                 issueNumber: input.issueNumber,
