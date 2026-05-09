@@ -39,7 +39,7 @@ const islands_1 = require("../domain/islands");
 const stages_1 = require("../domain/stages");
 const githubClient_1 = require("../github/githubClient");
 const DISPATCH_COOLDOWN_SECONDS = 180;
-const DISPATCH_MARKER_REGEX = /<!-- rw:workflow-dispatch:([^>]+) -->/;
+const DISPATCH_MARKER_REGEX = /(?:<!--|\&lt;!--)\s*rw:workflow-dispatch:([^\s>]+)\s*(?:-->|\&gt;)/;
 function getDispatchCooldownMs() {
     const raw = process.env.RW_WORKFLOW_DISPATCH_COOLDOWN_SECONDS;
     const parsed = Number(raw);
@@ -49,21 +49,17 @@ function getDispatchCooldownMs() {
     return DISPATCH_COOLDOWN_SECONDS * 1000;
 }
 function findLatestDispatchTimestamp(comments) {
-    let latestTimestamp;
     for (const comment of comments) {
         const markerMatch = comment.body.match(DISPATCH_MARKER_REGEX);
         if (!markerMatch) {
             continue;
         }
         const timestamp = new Date(markerMatch[1]);
-        if (Number.isNaN(timestamp.getTime())) {
-            continue;
-        }
-        if (!latestTimestamp || timestamp.getTime() > latestTimestamp.getTime()) {
-            latestTimestamp = timestamp;
+        if (!Number.isNaN(timestamp.getTime())) {
+            return timestamp;
         }
     }
-    return latestTimestamp;
+    return undefined;
 }
 function labelNames(issue) {
     return issue.labels.map((label) => label.name);

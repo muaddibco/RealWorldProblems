@@ -7,7 +7,7 @@ import { getRepoConfig } from "../github/env";
 import { GitHubClient } from "../github/githubClient";
 
 const DISPATCH_COOLDOWN_SECONDS = 180;
-const DISPATCH_MARKER_REGEX = /<!-- rw:workflow-dispatch:([^>]+) -->/;
+const DISPATCH_MARKER_REGEX = /(?:<!--|\&lt;!--)\s*rw:workflow-dispatch:([^\s>]+)\s*(?:-->|\&gt;)/;
 
 function getDispatchCooldownMs(): number {
   const raw = process.env.RW_WORKFLOW_DISPATCH_COOLDOWN_SECONDS;
@@ -21,8 +21,6 @@ function getDispatchCooldownMs(): number {
 }
 
 function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undefined {
-  let latestTimestamp: Date | undefined;
-
   for (const comment of comments) {
     const markerMatch = comment.body.match(DISPATCH_MARKER_REGEX);
     if (!markerMatch) {
@@ -30,16 +28,12 @@ function findLatestDispatchTimestamp(comments: { body: string }[]): Date | undef
     }
 
     const timestamp = new Date(markerMatch[1]);
-    if (Number.isNaN(timestamp.getTime())) {
-      continue;
-    }
-
-    if (!latestTimestamp || timestamp.getTime() > latestTimestamp.getTime()) {
-      latestTimestamp = timestamp;
+    if (!Number.isNaN(timestamp.getTime())) {
+      return timestamp;
     }
   }
 
-  return latestTimestamp;
+  return undefined;
 }
 
 function labelNames(issue: GitHubIssue): string[] {
