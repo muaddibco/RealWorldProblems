@@ -115,11 +115,17 @@ df.app.activity("DispatchWorkflowActivity", {
                 const nowMs = Date.now();
                 const allowedAtMs = lastDispatchAt.getTime() + cooldownMs;
                 if (allowedAtMs > nowMs) {
+                    const waitUntilUtc = new Date(allowedAtMs).toISOString();
+                    await github.addComment(input.owner, input.repo, input.issueNumber, [
+                        `<!-- rw:workflow-cooldown:${waitUntilUtc} -->`,
+                        `Too frequent execution detected. Workflow cooldown recorded till ${waitUntilUtc}: \`${input.stage.workflowId}\` for stage \`${input.stage.id}\` by orchestration \`${input.orchestrationId}\`.`
+                    ].join("\n"));
+                    await github.addLabels(input.owner, input.repo, input.issueNumber, ["rw/cooldown"]);
                     return {
                         dispatched: false,
                         workflowId: input.stage.workflowId,
                         reason: "dispatch-cooldown-active",
-                        waitUntilUtc: new Date(allowedAtMs).toISOString()
+                        waitUntilUtc
                     };
                 }
             }
@@ -168,6 +174,15 @@ df.app.activity("ReleaseIssueActivity", {
         const github = await githubClient_1.GitHubClient.create();
         await github.removeLabelIfExists(input.owner, input.repo, input.issueNumber, "rw/processing");
         await github.removeLabelIfExists(input.owner, input.repo, input.issueNumber, `rw/stage-${input.stageId}`);
+        return {
+            released: true
+        };
+    }
+});
+df.app.activity("ReleaseIssueCooldownActivity", {
+    handler: async (input) => {
+        const github = await githubClient_1.GitHubClient.create();
+        await github.removeLabelIfExists(input.owner, input.repo, input.issueNumber, "rw/cooldown");
         return {
             released: true
         };

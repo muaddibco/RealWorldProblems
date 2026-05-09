@@ -89,6 +89,9 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
             const waitUntil = parseUtcDate(dispatch.waitUntilUtc);
             if (waitUntil && waitUntil.getTime() > context.df.currentUtcDateTime.getTime()) {
                 yield context.df.createTimer(waitUntil);
+                yield context.df.callActivityWithRetry("ReleaseIssueCooldownActivity", retryOptions, {
+                    ...input
+                });
                 continue;
             }
             return {
