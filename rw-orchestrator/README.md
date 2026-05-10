@@ -47,6 +47,65 @@ npx azurite --silent --location .azurite --debug .azurite/debug.log
 npm --prefix rw-orchestrator start
 ```
 
+
+## Testing
+
+The test suite includes end-to-end tests for webhook handling, single-stage orchestration, and multi-stage orchestration scenarios. Tests use mocked GitHub clients and do not require a running Azure Functions host or database.
+
+### Run all tests
+
+```bash
+npm test
+```
+
+### Run tests in watch mode
+
+```bash
+npm run test:watch
+```
+
+Useful during development for continuous feedback on code changes.
+
+### Run with coverage report
+
+```bash
+npm run test:coverage
+```
+
+Generates a coverage report in the `coverage/` directory.
+
+### Run all tests in this Windows environment
+
+```bash
+npx jest --no-coverage --forceExit
+```
+
+Use this command if `npm test` hits worker process exit errors in PowerShell.
+
+### Run specific test file
+
+```bash
+npx jest src/__tests__/e2e/webhook.e2e.test.ts
+```
+
+### Test structure
+
+- `src/__tests__/e2e/webhook.e2e.test.ts` - GitHub webhook validation, dispatch triggers (10 tests)
+- `src/__tests__/e2e/single-stage.e2e.test.ts` - Single-stage orchestration cycles (7 tests)
+- `src/__tests__/e2e/multi-stage.e2e.test.ts` - Multi-stage progression and termination (3 tests)
+- `src/__tests__/fixtures/` - GitHub payload fixtures and mock clients
+- `src/__tests__/helpers/` - Test utilities and assertion helpers
+
+### Test scenarios covered
+
+**Phase 1 (Complete)**:
+- Webhook validation: signature verification, required headers, event filtering
+- Single-stage flow: claim → dispatch → verify → release
+- Terminal states: early exit on `status/needs-info`, `stage/9-archived`
+- Multi-stage progression: issues advancing through normalize → dedupe → software-fit
+- Label tracking: add/remove operations and state transitions
+- Activity comments: dispatch and orchestration markers
+
 ## GitHub webhook setup
 
 Set repository webhook URL to:
@@ -191,3 +250,5 @@ Optional parameters:
 - `-TaskHub` (default: `RealWorldProblemsHub`)
 - `-Connection` (default: `Storage`)
 - `-Code` (function key; if omitted, script resolves `masterKey`)
+
+

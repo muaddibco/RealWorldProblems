@@ -8,7 +8,10 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "start": "func start",
-    "watch": "tsc -w -p tsconfig.json"
+    "watch": "tsc -w -p tsconfig.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@azure/functions": "^4.5.0",
@@ -16,10 +19,13 @@
     "durable-functions": "^3.2.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.17.30",
     "azure-functions-core-tools": "^4.10.0",
     "azurite": "^3.35.0",
+    "jest": "^29.7.0",
     "rimraf": "^6.0.1",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.8.3"
   }
 }
