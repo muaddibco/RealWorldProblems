@@ -934,7 +934,7 @@ jobs:
       contents: read
       issues: write
     concurrency:
-      group: "gh-aw-conclusion-58-scope-expansion-manual"
+      group: "gh-aw-conclusion-${{ inputs.issue_number }}"
       cancel-in-progress: false
     outputs:
       incomplete_count: ${{ steps.report_incomplete.outputs.incomplete_count }}
@@ -1339,4 +1339,3 @@ jobs:
             /tmp/gh-aw/safe-output-items.jsonl
             /tmp/gh-aw/temporary-id-map.json
           if-no-files-found: ignore
-

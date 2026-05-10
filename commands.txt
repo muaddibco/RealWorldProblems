@@ -4,6 +4,7 @@ gh extension install github/gh-aw
 gh extension upgrade github/gh-aw
 
 gh aw compile
+./compile-aw.ps1
 
 gh aw audit ###JobId###
 
