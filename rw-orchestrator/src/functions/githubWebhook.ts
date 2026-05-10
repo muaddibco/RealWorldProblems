@@ -138,7 +138,7 @@ df.app.client.http("githubWebhook", {
         const labelName = ((payload.label as Record<string, unknown> | undefined)?.name as string) ?? "";
         const shouldProceed =
           (action === "labeled" && STAGE_LABELS.has(labelName)) ||
-          (action === "unlabeled" && labelName === "status/needs-info");
+          (action === "unlabeled" && (labelName === "status/needs-info" || labelName === "status/orchestration-failed"));
 
         if (!shouldProceed) {
           if (action === "labeled" || action === "unlabeled") {

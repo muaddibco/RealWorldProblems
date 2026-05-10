@@ -145,7 +145,7 @@ df.app.client.http("githubWebhook", {
                 const action = typeof payload.action === "string" ? payload.action : "";
                 const labelName = payload.label?.name ?? "";
                 const shouldProceed = (action === "labeled" && STAGE_LABELS.has(labelName)) ||
-                    (action === "unlabeled" && labelName === "status/needs-info");
+                    (action === "unlabeled" && (labelName === "status/needs-info" || labelName === "status/orchestration-failed"));
                 if (!shouldProceed) {
                     if (action === "labeled" || action === "unlabeled") {
                         return accepted({ ignored: true, reason: `issues action on unsupported label: ${action} ${labelName}` });
