@@ -17,6 +17,10 @@ on:
           - "true"
           - "false"
 
+concurrency:
+  group: rw-issue-${{ github.repository }}-${{ inputs.issue_number }}
+  cancel-in-progress: false
+
 engine:
   id: copilot
   agent: rw-scope-expander

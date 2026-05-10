@@ -14,7 +14,7 @@ on:
         type: string
 
 concurrency:
-  group: rw-wedge-filter-${{ github.repository }}-${{ inputs.issue_number }}
+  group: rw-issue-${{ github.repository }}-${{ inputs.issue_number }}
   cancel-in-progress: false
 
 run-name: "RW: Wedge Filter + Archive | issue #${{ inputs.issue_number }} | orch ${{ inputs.orchestration_id || 'n/a' }}"
