@@ -21,6 +21,9 @@ function parseUtcDate(value: string | undefined): Date | undefined {
 
 df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
   const input = context.df.getInput() as OrchestrationInput;
+  const maxTimeoutRetries = 3;
+  let timeoutRetries = 0;
+  let timeoutRetryStageId: string | undefined;
 
   while (true) {
     const issue = yield context.df.callActivityWithRetry("GetIssueActivity", retryOptions, input);
@@ -36,6 +39,11 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
         status: "no-eligible-stage",
         issueNumber: input.issueNumber
       };
+    }
+
+    if (timeoutRetryStageId !== stage.id) {
+      timeoutRetryStageId = stage.id;
+      timeoutRetries = 0;
     }
 
     const claim = yield context.df.callActivityWithRetry("ClaimIssueActivity", retryOptions, {
@@ -94,6 +102,12 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
 
       if (!hasProcessingLabel) {
         timeoutTask.cancel();
+        timeoutRetries = 0;
+        continue;
+      }
+
+      timeoutRetries += 1;
+      if (timeoutRetries <= maxTimeoutRetries) {
         continue;
       }
 
@@ -118,6 +132,7 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
     }
 
     timeoutTask.cancel();
+    timeoutRetries = 0;
 
     const verification = yield context.df.callActivityWithRetry("VerifyStageTransitionActivity", retryOptions, {
       ...input,

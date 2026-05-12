@@ -50,6 +50,9 @@ function parseUtcDate(value) {
 }
 df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
     const input = context.df.getInput();
+    const maxTimeoutRetries = 3;
+    let timeoutRetries = 0;
+    let timeoutRetryStageId;
     while (true) {
         const issue = yield context.df.callActivityWithRetry("GetIssueActivity", retryOptions, input);
         const stage = (yield context.df.callActivity("DecideNextStageActivity", {
@@ -63,6 +66,10 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
                 status: "no-eligible-stage",
                 issueNumber: input.issueNumber
             };
+        }
+        if (timeoutRetryStageId !== stage.id) {
+            timeoutRetryStageId = stage.id;
+            timeoutRetries = 0;
         }
         const claim = yield context.df.callActivityWithRetry("ClaimIssueActivity", retryOptions, {
             ...input,
@@ -111,6 +118,11 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
             const hasProcessingLabel = timedOutIssue.labels.some((label) => label.name === "rw/processing");
             if (!hasProcessingLabel) {
                 timeoutTask.cancel();
+                timeoutRetries = 0;
+                continue;
+            }
+            timeoutRetries += 1;
+            if (timeoutRetries <= maxTimeoutRetries) {
                 continue;
             }
             yield context.df.callActivityWithRetry("MarkIssueFailedActivity", retryOptions, {
@@ -131,6 +143,7 @@ df.app.orchestration("IssuePipelineOrchestrator", function* (context) {
             };
         }
         timeoutTask.cancel();
+        timeoutRetries = 0;
         const verification = yield context.df.callActivityWithRetry("VerifyStageTransitionActivity", retryOptions, {
             ...input,
             stage

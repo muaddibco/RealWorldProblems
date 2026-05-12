@@ -9,7 +9,7 @@ on:
         default: true
         type: boolean
       stale_minutes:
-        description: "Minimum minutes since stage label was applied"
+        description: "Minimum minutes since the issue was last updated"
         required: true
         default: "30"
       max_issues:
@@ -73,9 +73,11 @@ jobs:
               return;
             }
 
-            const stageLabelPattern = /^stage\/\d+-/;
-            const ignoredLabels = ['agentic-workflows', 'rw/processing'];
+            const stageLabelPattern = /^stage\//;
+            const ignoredLabels = ['agentic-workflows', 'rw/processing', 'status/needs-info'];
+            const excludedStageLabels = new Set(['stage/7.1-validated', 'stage/8-selected', 'stage/9-archived']);
             const experimentLabel = 'type/experiment';
+            const orchestrationFailedLabel = 'status/orchestration-failed';
             const thresholdMs = staleMinutes * 60 * 1000;
             const nowMs = Date.now();
 
@@ -150,7 +152,7 @@ jobs:
               if (stageLabels.length !== 1) continue;
 
               const stageLabel = stageLabels[0];
-              if (stageLabel === 'stage/9-archived') continue;
+              if (excludedStageLabels.has(stageLabel)) continue;
               if (stageFilter && stageLabel !== stageFilter) continue;
 
               if (await hasExperimentSubIssue(issue.number)) {
@@ -161,30 +163,10 @@ jobs:
               const issueUpdatedMs = new Date(issue.updated_at).getTime();
               if (!Number.isFinite(issueUpdatedMs) || (nowMs - issueUpdatedMs) < thresholdMs) continue;
 
-              const events = await github.paginate(github.rest.issues.listEvents, {
-                owner,
-                repo,
-                issue_number: issue.number,
-                per_page: 100
-              });
-
-              const stageAppliedEvents = events
-                .filter((event) => event.event === 'labeled' && event.label && event.label.name === stageLabel)
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-              if (stageAppliedEvents.length === 0) continue;
-
-              const stageAppliedMs = new Date(stageAppliedEvents[0].created_at).getTime();
-              if (!Number.isFinite(stageAppliedMs)) continue;
-
-              const ageMs = nowMs - stageAppliedMs;
-              if (ageMs < thresholdMs) continue;
-
               candidates.push({
                 number: issue.number,
                 title: issue.title,
                 stageLabel,
-                stageAgeHours: Number((ageMs / (60 * 60 * 1000)).toFixed(1)),
                 updatedHours: Number(((nowMs - issueUpdatedMs) / (60 * 60 * 1000)).toFixed(1))
               });
 
@@ -204,6 +186,17 @@ jobs:
                   repo,
                   issue_number: item.number,
                   name: item.stageLabel
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: item.number,
+                  name: orchestrationFailedLabel
                 });
               } catch (error) {
                 if (error.status !== 404) throw error;
@@ -232,7 +225,7 @@ jobs:
               lines.push('No stalled issues matched the current filters.');
             } else {
               for (const row of results) {
-                lines.push(`- #${row.number} [${row.stageLabel}] ${row.status} | stage-age=${row.stageAgeHours}h | updated=${row.updatedHours}h :: ${row.title}`);
+                lines.push(`- #${row.number} [${row.stageLabel}] ${row.status} | updated=${row.updatedHours}h :: ${row.title}`);
               }
             }
 
