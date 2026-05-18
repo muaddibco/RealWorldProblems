@@ -251,4 +251,21 @@ Optional parameters:
 - `-Connection` (default: `Storage`)
 - `-Code` (function key; if omitted, script resolves `masterKey`)
 
+## Orchestrator status workflow
+
+Use the GitHub Actions workflow to print Durable instance status for eligible `type/problem` issues.
+
+Workflow:
+- `.github/workflows/17-orchestrator-status.yml`
+
+The workflow now accepts Durable lookup inputs that mirror `deploy/get-instance-status.ps1`:
+- `function_app_name`
+- `resource_group`
+- `azd_environment`
+- `task_hub`
+- `connection`
+- `code`
+
+It filters out issues with `stage/7.1-validated`, `stage/8-selected`, `stage/9-archived`, or `status/needs-info`, then prints the status response for each remaining `type/problem` issue.
+
 

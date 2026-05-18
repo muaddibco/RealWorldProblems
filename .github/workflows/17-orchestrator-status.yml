@@ -1,0 +1,256 @@
+name: "RW: Orchestrator Status"
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_issues:
+        description: "Max issues to print"
+        required: true
+        default: "50"
+      function_app_name:
+        description: "Azure Function App name for Durable status lookup"
+        required: false
+        default: ""
+      resource_group:
+        description: "Azure resource group for Durable status lookup"
+        required: false
+        default: ""
+      azd_environment:
+        description: "Optional azd environment to resolve app settings"
+        required: false
+        default: ""
+      task_hub:
+        description: "Durable task hub name"
+        required: false
+        default: "RealWorldProblemsHub"
+      connection:
+        description: "Durable storage connection name"
+        required: false
+        default: "Storage"
+      code:
+        description: "Function key; if omitted, the helper script will try az functionapp keys list"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: rw-orchestrator-status-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - id: collect-eligible-problem-issues
+        name: Collect eligible problem issues
+        uses: actions/github-script@v8
+        env:
+          INPUT_MAX_ISSUES: ${{ inputs.max_issues || '50' }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const maxIssues = Number.parseInt(process.env.INPUT_MAX_ISSUES || '50', 10);
+
+            if (!Number.isInteger(maxIssues) || maxIssues <= 0) {
+              core.setFailed('max_issues must be a positive integer.');
+              return;
+            }
+
+            const excludedLabels = new Set([
+              'stage/7.1-validated',
+              'stage/8-selected',
+              'stage/9-archived',
+              'status/needs-info'
+            ]);
+
+            function labelsOf(issue) {
+              return (issue.labels || [])
+                .map((label) => typeof label === 'string' ? label : label.name)
+                .filter(Boolean);
+            }
+
+            const rows = [];
+            let page = 1;
+
+            while (rows.length < maxIssues && page <= 10) {
+              const response = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                labels: 'type/problem',
+                per_page: 100,
+                page
+              });
+
+              const issues = response.data.filter((issue) => !issue.pull_request);
+              if (issues.length === 0) {
+                break;
+              }
+
+              for (const issue of issues) {
+                const labels = labelsOf(issue);
+                if (labels.some((label) => excludedLabels.has(label))) {
+                  continue;
+                }
+
+                rows.push({
+                  number: issue.number,
+                  title: issue.title,
+                  labels
+                });
+
+                if (rows.length >= maxIssues) {
+                  break;
+                }
+              }
+
+              if (issues.length < 100) {
+                break;
+              }
+
+              page += 1;
+            }
+
+            core.setOutput('issues', JSON.stringify(rows));
+            core.info(`Collected ${rows.length} eligible issue(s) for status lookup.`);
+
+      - name: Check Durable instance status for each issue
+        shell: pwsh
+        env:
+          INPUT_FUNCTION_APP_NAME: ${{ inputs.function_app_name || '' }}
+          INPUT_RESOURCE_GROUP: ${{ inputs.resource_group || '' }}
+          INPUT_AZD_ENVIRONMENT: ${{ inputs.azd_environment || '' }}
+          INPUT_TASK_HUB: ${{ inputs.task_hub || 'RealWorldProblemsHub' }}
+          INPUT_CONNECTION: ${{ inputs.connection || 'Storage' }}
+          INPUT_CODE: ${{ inputs.code || '' }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          ISSUES_JSON: ${{ steps.collect-eligible-problem-issues.outputs.issues }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Get-AzdEnvValue {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Key,
+              [string]$Environment
+            )
+
+            $projectRoot = $env:GITHUB_WORKSPACE
+            Push-Location $projectRoot
+            try {
+              $cmd = 'azd env get-values'
+              if ($Environment) {
+                $cmd += " --environment $Environment"
+              }
+
+              $lines = Invoke-Expression $cmd
+              $pattern = '^' + [regex]::Escape($Key) + '="(.*)"$'
+              $match = $lines | Where-Object { $_ -match $pattern } | Select-Object -First 1
+              if (-not $match) {
+                return $null
+              }
+
+              return $match -replace ('^' + [regex]::Escape($Key) + '="'), '' -replace '"$', ''
+            } catch {
+              return $null
+            } finally {
+              Pop-Location
+            }
+          }
+
+          function Resolve-Setting {
+            param(
+              [string]$ExplicitValue,
+              [string]$EnvValue,
+              [string]$AzdKey,
+              [string]$AzdEnvironment
+            )
+
+            if (-not [string]::IsNullOrWhiteSpace($ExplicitValue)) {
+              return $ExplicitValue
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($EnvValue)) {
+              return $EnvValue
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($AzdKey)) {
+              return Get-AzdEnvValue -Key $AzdKey -Environment $AzdEnvironment
+            }
+
+            return $null
+          }
+
+          $issues = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:ISSUES_JSON)) {
+            $issues = $env:ISSUES_JSON | ConvertFrom-Json
+          }
+
+          $functionAppName = Resolve-Setting -ExplicitValue $env:INPUT_FUNCTION_APP_NAME -EnvValue $env:AZURE_FUNCTIONAPP_NAME -AzdKey 'AZURE_FUNCTIONAPP_NAME' -AzdEnvironment $env:INPUT_AZD_ENVIRONMENT
+          $resourceGroup = Resolve-Setting -ExplicitValue $env:INPUT_RESOURCE_GROUP -EnvValue $env:AZURE_RESOURCE_GROUP -AzdKey 'AZURE_RESOURCE_GROUP' -AzdEnvironment $env:INPUT_AZD_ENVIRONMENT
+          $taskHub = if ([string]::IsNullOrWhiteSpace($env:INPUT_TASK_HUB)) { 'RealWorldProblemsHub' } else { $env:INPUT_TASK_HUB }
+          $connection = if ([string]::IsNullOrWhiteSpace($env:INPUT_CONNECTION)) { 'Storage' } else { $env:INPUT_CONNECTION }
+          $code = $env:INPUT_CODE
+
+          if (-not $functionAppName) {
+            throw 'FunctionAppName is required. Provide workflow input function_app_name or set AZURE_FUNCTIONAPP_NAME.'
+          }
+
+          if (-not $resourceGroup) {
+            throw 'ResourceGroup is required. Provide workflow input resource_group or set AZURE_RESOURCE_GROUP.'
+          }
+
+          if (-not $code) {
+            if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+              throw 'Could not resolve function key because az CLI is unavailable. Provide workflow input code instead.'
+            }
+
+            $code = az functionapp keys list --resource-group $resourceGroup --name $functionAppName --query masterKey -o tsv
+          }
+
+          if (-not $code) {
+            throw 'Could not resolve function key.'
+          }
+
+          function Get-IssueInstanceId {
+            param(
+              [string]$Owner,
+              [string]$Repo,
+              [int]$IssueNumber
+            )
+
+            return "rw:$Owner:$Repo:issue:$IssueNumber"
+          }
+
+          foreach ($issue in $issues) {
+            $instanceId = Get-IssueInstanceId -Owner $env:REPOSITORY_OWNER -Repo $env:REPOSITORY_NAME -IssueNumber $issue.number
+            $encodedInstanceId = [uri]::EscapeDataString($instanceId)
+            $url = "https://{0}.azurewebsites.net/runtime/webhooks/durabletask/instances/{1}?taskHub={2}&connection={3}&code={4}" -f $functionAppName, $encodedInstanceId, $taskHub, $connection, $code
+
+            Write-Host "#$($issue.number) $($issue.title)"
+            Write-Host "Querying durable status for $instanceId"
+
+            try {
+              $status = Invoke-RestMethod -Method Get -Uri $url
+              $summary = [pscustomobject]@{
+                instanceId = $instanceId
+                runtimeStatus = $status.runtimeStatus
+                createdTime = $status.createdTime
+                lastUpdatedTime = $status.lastUpdatedTime
+                customStatus = $status.customStatus
+              }
+
+              $summary | ConvertTo-Json -Depth 4
+            } catch {
+              $message = $_.Exception.Message
+              Write-Host "Status lookup failed for $instanceId: $message"
+            }
+
+            Write-Host ''
+          }
