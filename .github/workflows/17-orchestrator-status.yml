@@ -213,7 +213,7 @@ jobs:
               [int]$IssueNumber
             )
 
-            return "rw:$Owner:$Repo:issue:$IssueNumber"
+            return "rw:${Owner}:${Repo}:issue:${IssueNumber}"
           }
 
           foreach ($issue in $issues) {
