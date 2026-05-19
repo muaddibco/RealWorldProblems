@@ -7,18 +7,6 @@ on:
         description: "Max issues to print"
         required: true
         default: "50"
-      function_app_name:
-        description: "Azure Function App name for Durable status lookup"
-        required: false
-        default: ""
-      resource_group:
-        description: "Azure resource group for Durable status lookup"
-        required: false
-        default: ""
-      azd_environment:
-        description: "Optional azd environment to resolve app settings"
-        required: false
-        default: ""
       task_hub:
         description: "Durable task hub name"
         required: false
@@ -122,9 +110,9 @@ jobs:
       - name: Check Durable instance status for each issue
         shell: pwsh
         env:
-          INPUT_FUNCTION_APP_NAME: ${{ inputs.function_app_name || '' }}
-          INPUT_RESOURCE_GROUP: ${{ inputs.resource_group || '' }}
-          INPUT_AZD_ENVIRONMENT: ${{ inputs.azd_environment || '' }}
+          INPUT_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTIONAPP_NAME || '' }}
+          INPUT_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || '' }}
+          INPUT_AZD_ENVIRONMENT: ${{ vars.AZD_ENVIRONMENT || '' }}
           INPUT_TASK_HUB: ${{ inputs.task_hub || 'RealWorldProblemsHub' }}
           INPUT_CONNECTION: ${{ inputs.connection || 'Storage' }}
           INPUT_CODE: ${{ inputs.code || '' }}
@@ -199,11 +187,11 @@ jobs:
           $code = $env:INPUT_CODE
 
           if (-not $functionAppName) {
-            throw 'FunctionAppName is required. Provide workflow input function_app_name or set AZURE_FUNCTIONAPP_NAME.'
+            throw 'FunctionAppName is required. Set repository variable AZURE_FUNCTIONAPP_NAME or set AZURE_FUNCTIONAPP_NAME.'
           }
 
           if (-not $resourceGroup) {
-            throw 'ResourceGroup is required. Provide workflow input resource_group or set AZURE_RESOURCE_GROUP.'
+            throw 'ResourceGroup is required. Set repository variable AZURE_RESOURCE_GROUP or set AZURE_RESOURCE_GROUP.'
           }
 
           if (-not $code) {

@@ -258,10 +258,12 @@ Use the GitHub Actions workflow to print Durable instance status for eligible `t
 Workflow:
 - `.github/workflows/17-orchestrator-status.yml`
 
-The workflow now accepts Durable lookup inputs that mirror `deploy/get-instance-status.ps1`:
-- `function_app_name`
-- `resource_group`
-- `azd_environment`
+The workflow takes these values from repository variables:
+- `AZURE_FUNCTIONAPP_NAME`
+- `AZURE_RESOURCE_GROUP`
+- `AZD_ENVIRONMENT`
+
+It also accepts these optional Durable lookup inputs:
 - `task_hub`
 - `connection`
 - `code`
