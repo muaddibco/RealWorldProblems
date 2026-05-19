@@ -15,10 +15,6 @@ on:
         description: "Durable storage connection name"
         required: false
         default: "Storage"
-      code:
-        description: "Function key; if omitted, the helper script will try az functionapp keys list"
-        required: false
-        default: ""
 
 permissions:
   contents: read
@@ -115,7 +111,7 @@ jobs:
           INPUT_AZD_ENVIRONMENT: ${{ vars.AZD_ENVIRONMENT || '' }}
           INPUT_TASK_HUB: ${{ inputs.task_hub || 'RealWorldProblemsHub' }}
           INPUT_CONNECTION: ${{ inputs.connection || 'Storage' }}
-          INPUT_CODE: ${{ inputs.code || '' }}
+          INPUT_CODE: ${{ secrets.FUNCTIONS_MASTER_KEY || '' }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
           REPOSITORY_NAME: ${{ github.event.repository.name }}
           ISSUES_JSON: ${{ steps.collect-eligible-problem-issues.outputs.issues }}
@@ -196,7 +192,7 @@ jobs:
 
           if (-not $code) {
             if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
-              throw 'Could not resolve function key because az CLI is unavailable. Provide workflow input code instead.'
+              throw 'Could not resolve function key because secret FUNCTIONS_MASTER_KEY is empty and az CLI is unavailable.'
             }
 
             $code = az functionapp keys list --resource-group $resourceGroup --name $functionAppName --query masterKey -o tsv

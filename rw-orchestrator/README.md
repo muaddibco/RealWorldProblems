@@ -266,7 +266,9 @@ The workflow takes these values from repository variables:
 It also accepts these optional Durable lookup inputs:
 - `task_hub`
 - `connection`
-- `code`
+
+For Durable endpoint authentication, set repository secret `FUNCTIONS_MASTER_KEY`.
+If the secret is not set, the workflow attempts to resolve the key using Azure CLI.
 
 It filters out issues with `stage/7.1-validated`, `stage/8-selected`, `stage/9-archived`, or `status/needs-info`, then prints the status response for each remaining `type/problem` issue.
 
