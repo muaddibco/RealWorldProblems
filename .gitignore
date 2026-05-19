@@ -2,3 +2,9 @@
 rw-orchestrator/deploy/payload.json
 .azurite/*
 rw-orchestrator/.azurite/*
+node_modules/
+dist/
+api/dist/
+coverage/
+api/local.settings.json
+.angular/

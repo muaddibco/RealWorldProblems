@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "GITHUB_OWNER": "muaddibco",
+    "GITHUB_REPO": "RealWorldProblems",
+    "GITHUB_TOKEN": "",
+    "GITHUB_APP_ID": "",
+    "GITHUB_PRIVATE_KEY": "",
+    "GITHUB_INSTALLATION_ID": "",
+    "ORCHESTRATOR_STATUS_PROVIDER": "mock",
+    "ORCHESTRATOR_FUNCTION_APP_NAME": "",
+    "ORCHESTRATOR_FUNCTION_KEY": "",
+    "ORCHESTRATOR_TASK_HUB": "RealWorldProblemsHub",
+    "ORCHESTRATOR_CONNECTION": "Storage",
+    "PORTAL_ALLOW_MOCK_USER": "true",
+    "PORTAL_RETRY_COOLDOWN_SECONDS": "120",
+    "PORTAL_BATCH_RETRY_MAX": "25"
+  }
+}

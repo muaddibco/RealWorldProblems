@@ -1,0 +1,6 @@
+name: realworldproblems-portal
+services:
+  web:
+    project: ./
+    language: js
+    host: staticwebapp
