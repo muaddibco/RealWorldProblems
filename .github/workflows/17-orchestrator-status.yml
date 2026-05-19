@@ -237,7 +237,7 @@ jobs:
               $summary | ConvertTo-Json -Depth 4
             } catch {
               $message = $_.Exception.Message
-              Write-Host "Status lookup failed for $instanceId: $message"
+              Write-Host "Status lookup failed for ${instanceId}: $message"
             }
 
             Write-Host ''
