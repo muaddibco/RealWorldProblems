@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalApiFacade } from '../services/portal-api.facade';
 import { PortalSettingsService } from '../services/portal-settings.service';
@@ -375,7 +375,7 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
     }
   `]
 })
-export class DashboardPageComponent {
+export class DashboardPageComponent implements OnDestroy {
   private readonly api = inject(PortalApiFacade);
   readonly settings = inject(PortalSettingsService);
 
@@ -389,6 +389,9 @@ export class DashboardPageComponent {
   readonly stageFilter = signal<string>('all');
   readonly orchestrationFilter = signal<string>('all');
   readonly search = signal('');
+
+  private readonly reloadDebounceMs = 350;
+  private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly orchestrationOptions = ['not_started', 'queued', 'running', 'continued_as_new', 'completed', 'failed', 'cancelled', 'terminated', 'cooldown_active', 'blocked_or_noop', 'no_eligible_stage', 'not_claimed', 'stale', 'unknown'];
   readonly stageOptions = [
@@ -463,7 +466,30 @@ export class DashboardPageComponent {
     void this.reload();
   }
 
+  ngOnDestroy(): void {
+    if (this.reloadTimer !== null) {
+      clearTimeout(this.reloadTimer);
+      this.reloadTimer = null;
+    }
+  }
+
+  private scheduleReload(): void {
+    if (this.reloadTimer !== null) {
+      clearTimeout(this.reloadTimer);
+    }
+
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = null;
+      void this.reload();
+    }, this.reloadDebounceMs);
+  }
+
   async reload(): Promise<void> {
+    if (this.reloadTimer !== null) {
+      clearTimeout(this.reloadTimer);
+      this.reloadTimer = null;
+    }
+
     this.loading.set(true);
     this.error.set(null);
     try {
@@ -487,27 +513,27 @@ export class DashboardPageComponent {
 
   setStatusFilter(value: string): void {
     this.statusFilter.set(value as DashboardStatusFilter);
-    void this.reload();
+    this.scheduleReload();
   }
 
   setViewMode(value: 'default' | 'all'): void {
     this.viewMode.set(value);
-    void this.reload();
+    this.scheduleReload();
   }
 
   setStageFilter(value: string): void {
     this.stageFilter.set(value);
-    void this.reload();
+    this.scheduleReload();
   }
 
   setOrchestrationFilter(value: string): void {
     this.orchestrationFilter.set(value);
-    void this.reload();
+    this.scheduleReload();
   }
 
   setSearch(value: string): void {
     this.search.set(value);
-    void this.reload();
+    this.scheduleReload();
   }
 
   toggleIssueSelection(issueNumber: number, checked: boolean): void {

@@ -24,6 +24,30 @@ export type IssueListQuery = {
   limit?: number;
 };
 
+let cachedIssueCards: IssueCard[] | null = null;
+let cachedIssueCardsAtMs = 0;
+let inFlightIssueCardsPromise: Promise<IssueCard[]> | null = null;
+
+function getIssuesCacheTtlMs(): number {
+  const raw = Number(process.env.PORTAL_ISSUES_CACHE_TTL_SECONDS ?? 30);
+  const seconds = Number.isFinite(raw) && raw >= 0 ? raw : 30;
+  return seconds * 1000;
+}
+
+function isIssueCardsCacheFresh(nowMs = Date.now()): boolean {
+  if (!cachedIssueCards) {
+    return false;
+  }
+
+  const ttlMs = getIssuesCacheTtlMs();
+  return nowMs - cachedIssueCardsAtMs < ttlMs;
+}
+
+function invalidateIssueCardsCache(): void {
+  cachedIssueCards = null;
+  cachedIssueCardsAtMs = 0;
+}
+
 function parseLabels(issue: GitHubIssueRecord): string[] {
   return asStringArray(issue.labels.map((label) => typeof label === 'string' ? label : label?.name ?? null));
 }
@@ -98,9 +122,9 @@ async function getRecentComments(issueNumber: number): Promise<{ author: string;
   }
 }
 
-export async function listIssues(query: IssueListQuery = {}): Promise<{ issues: IssueCard[]; total: number }> {
+async function hydrateIssueCards(): Promise<IssueCard[]> {
   const rawIssues = await githubClient.listIssues();
-  const cards = await Promise.all(rawIssues.map(async (issue) => {
+  return Promise.all(rawIssues.map(async (issue) => {
     const labels = parseLabels(issue);
     const stageLabel = getPrimaryStageLabel(labels);
     const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
@@ -108,6 +132,31 @@ export async function listIssues(query: IssueListQuery = {}): Promise<{ issues: 
     const retryEligibility = buildSafeRetryEligibility(issue, orchestrationStatus, recentComments);
     return buildIssueCard(issue, orchestrationStatus, retryEligibility);
   }));
+}
+
+async function getHydratedIssueCards(): Promise<IssueCard[]> {
+  if (isIssueCardsCacheFresh()) {
+    return cachedIssueCards as IssueCard[];
+  }
+
+  if (inFlightIssueCardsPromise) {
+    return inFlightIssueCardsPromise;
+  }
+
+  inFlightIssueCardsPromise = hydrateIssueCards();
+
+  try {
+    const cards = await inFlightIssueCardsPromise;
+    cachedIssueCards = cards;
+    cachedIssueCardsAtMs = Date.now();
+    return cards;
+  } finally {
+    inFlightIssueCardsPromise = null;
+  }
+}
+
+export async function listIssues(query: IssueListQuery = {}): Promise<{ issues: IssueCard[]; total: number }> {
+  const cards = await getHydratedIssueCards();
 
   const filtered = sortIssues(cards).filter((issue) => {
     if (query.defaultView ?? true) {
@@ -185,6 +234,8 @@ export async function retryIssue(issueNumber: number, reason: string, requestedB
     `Requested by: ${requestedBy ?? 'unknown'}`
   ].join('\n');
   await githubClient.createComment(issue.number, comment);
+
+  invalidateIssueCardsCache();
 
   return {
     ok: true,
