@@ -23,6 +23,8 @@ Start the Angular app:
 yarn start
 ```
 
+The frontend runs on `http://localhost:4200` and proxies `/api/*` requests to the local Functions host at `http://127.0.0.1:7071`.
+
 Run the Functions backend locally:
 
 ```bash
