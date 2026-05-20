@@ -10,7 +10,7 @@ import {
   RetryStrategy,
 } from '../types';
 import { asStringArray } from '../shared/http';
-import { buildIssueCard, buildIssueDetails, matchesIssueSearch, summarizeLabels } from '../github/issueClassification';
+import { buildIssueCard, buildIssueDetails, classifyLifecycleStatus, matchesIssueSearch, summarizeLabels } from '../github/issueClassification';
 import { applyRetryStrategyLabels, evaluateRetryEligibility } from '../github/retryEligibility';
 import { getPrimaryStageLabel, getStageLabelsCount, isStageLabel } from '../orchestrator/stageConfig';
 import { aggregateBatchRetryResults } from './batchRetryAggregation';
@@ -211,9 +211,27 @@ export async function retryIssue(issueNumber: number, reason: string, requestedB
   const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
   const recentComments = await getRecentComments(issue.number);
   const retryEligibility = evaluateRetryEligibility(issue, orchestrationStatus, recentComments);
+  const lifecycleStatus = classifyLifecycleStatus(labels, issue.state);
 
   if (!retryEligibility.allowed) {
     return { ok: false, issueNumber, message: `Retry refused: ${retryEligibility.reason ?? 'unknown safety rule'}`, retriedTooRecently: Boolean(retryEligibility.retriedTooRecently) };
+  }
+
+  if (orchestrationStatus.status === 'queued' || orchestrationStatus.status === 'running') {
+    if (!orchestratorStatusProvider.terminateInstance) {
+      return { ok: false, issueNumber, message: 'Retry refused: orchestrator status provider does not support termination.', retriedTooRecently: false };
+    }
+
+    try {
+      await orchestratorStatusProvider.terminateInstance(orchestrationStatus.instanceId, reason);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { ok: false, issueNumber, message: `Retry refused: ${message}`, retriedTooRecently: false };
+    }
+  }
+
+  if (lifecycleStatus === 'processing' && labels.includes('rw/processing')) {
+    await githubClient.removeLabel(issue.number, 'rw/processing');
   }
 
   const strategy = retryEligibility.strategy ?? 'reapplied-stage-label';

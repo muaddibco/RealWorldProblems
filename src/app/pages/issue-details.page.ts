@@ -23,7 +23,7 @@ import { IssueDetails } from '../types/models';
           <div class="details-actions">
             <a class="button" routerLink="/">Back to dashboard</a>
             <a class="button" [href]="issue()!.htmlUrl" target="_blank" rel="noreferrer">Open in GitHub</a>
-            <button class="button button-primary" type="button" [disabled]="!issue()!.retryAllowed" (click)="retry()">Retry issue</button>
+            <button class="button button-primary" type="button" (click)="retry()">Retry issue</button>
           </div>
         </div>
 
@@ -176,11 +176,11 @@ export class IssueDetailsPageComponent {
 
   async retry(): Promise<void> {
     const current = this.issue();
-    if (!current || !current.retryAllowed) {
+    if (!current) {
       return;
     }
 
-    const confirmed = window.confirm(`You are about to re-trigger processing for issue #${current.number}.\n\nThe backend will either remove status/orchestration-failed or remove and re-add the current stage label, depending on the issue state.\n\nThe portal will not directly dispatch the stage workflow. rw-orchestrator will handle workflow dispatch.`);
+    const confirmed = window.confirm(`You are about to re-trigger processing for issue #${current.number}.\n\nIf an orchestration is queued or running, the backend will terminate it first. If lifecycle is processing, rw/processing will be removed before retry.\n\nThe backend will then either remove status/orchestration-failed or remove and re-add the current stage label, depending on the issue state.\n\nThe portal will not directly dispatch the stage workflow. rw-orchestrator will handle workflow dispatch.`);
     if (!confirmed) {
       return;
     }

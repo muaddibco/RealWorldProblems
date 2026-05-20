@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalApiFacade } from '../services/portal-api.facade';
 import { PortalSettingsService } from '../services/portal-settings.service';
@@ -401,10 +401,11 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
     }
   `]
 })
-export class DashboardPageComponent implements OnDestroy {
+export class DashboardPageComponent {
   private readonly api = inject(PortalApiFacade);
   readonly settings = inject(PortalSettingsService);
   private lastLoadErrorPopupMessage: string | null = null;
+  private lastSuccessfulIssues: IssueCard[] = [];
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -417,9 +418,6 @@ export class DashboardPageComponent implements OnDestroy {
   readonly stageFilter = signal<string>('all');
   readonly orchestrationFilter = signal<string>('all');
   readonly search = signal('');
-
-  private readonly reloadDebounceMs = 350;
-  private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly orchestrationOptions = ['not_started', 'queued', 'running', 'continued_as_new', 'completed', 'failed', 'cancelled', 'terminated', 'cooldown_active', 'blocked_or_noop', 'no_eligible_stage', 'not_claimed', 'stale', 'unknown'];
   readonly stageOptions = [
@@ -494,13 +492,6 @@ export class DashboardPageComponent implements OnDestroy {
     void this.reload();
   }
 
-  ngOnDestroy(): void {
-    if (this.reloadTimer !== null) {
-      clearTimeout(this.reloadTimer);
-      this.reloadTimer = null;
-    }
-  }
-
   @HostListener('document:click')
   onDocumentClick(): void {
     this.closeActionMenu();
@@ -521,23 +512,7 @@ export class DashboardPageComponent implements OnDestroy {
     }
   }
 
-  private scheduleReload(): void {
-    if (this.reloadTimer !== null) {
-      clearTimeout(this.reloadTimer);
-    }
-
-    this.reloadTimer = setTimeout(() => {
-      this.reloadTimer = null;
-      void this.reload();
-    }, this.reloadDebounceMs);
-  }
-
   async reload(): Promise<void> {
-    if (this.reloadTimer !== null) {
-      clearTimeout(this.reloadTimer);
-      this.reloadTimer = null;
-    }
-
     this.loading.set(true);
     this.error.set(null);
     try {
@@ -551,11 +526,13 @@ export class DashboardPageComponent implements OnDestroy {
         limit: 250
       });
       this.issues.set(response.issues);
+      this.lastSuccessfulIssues = response.issues;
       this.selectedIssueNumbers.set(new Set());
       this.lastLoadErrorPopupMessage = null;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load issues';
       this.error.set(message);
+      this.issues.set(this.lastSuccessfulIssues);
       if (this.lastLoadErrorPopupMessage !== message) {
         this.lastLoadErrorPopupMessage = message;
         window.alert(message);
@@ -567,27 +544,22 @@ export class DashboardPageComponent implements OnDestroy {
 
   setStatusFilter(value: string): void {
     this.statusFilter.set(value as DashboardStatusFilter);
-    this.scheduleReload();
   }
 
   setViewMode(value: 'default' | 'all'): void {
     this.viewMode.set(value);
-    this.scheduleReload();
   }
 
   setStageFilter(value: string): void {
     this.stageFilter.set(value);
-    this.scheduleReload();
   }
 
   setOrchestrationFilter(value: string): void {
     this.orchestrationFilter.set(value);
-    this.scheduleReload();
   }
 
   setSearch(value: string): void {
     this.search.set(value);
-    this.scheduleReload();
   }
 
   toggleIssueSelection(issueNumber: number, checked: boolean): void {

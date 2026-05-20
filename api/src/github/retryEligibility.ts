@@ -71,14 +71,6 @@ export function evaluateRetryEligibility(issue: GitHubIssueRecord, orchestration
     return { allowed: false, reason: 'Issue was retried too recently', retriedTooRecently: true };
   }
 
-  if (labels.includes('rw/processing')) {
-    if (orchestrationStatus.status === 'running' || orchestrationStatus.status === 'queued' || orchestrationStatus.status === 'continued_as_new') {
-      return { allowed: false, reason: 'Retry refused: issue is currently processing in Durable Functions.' };
-    }
-
-    return { allowed: false, reason: 'Retry refused: issue has rw/processing but no active Durable orchestration was detected. Manual stale-lock cleanup is required.' };
-  }
-
   if (orchestrationStatus.status === 'unknown') {
     return { allowed: false, reason: 'Retry refused: Failed to fetch Durable orchestration status.' };
   }

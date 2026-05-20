@@ -102,4 +102,20 @@ export class DurableHttpOrchestratorStatusProvider implements OrchestratorStatus
       return { issueNumber, stageLabel, instanceId, status: 'unknown', reason: `Failed to fetch Durable orchestration status: ${message}` };
     }
   }
+
+  async terminateInstance(instanceId: string, reason: string): Promise<void> {
+    const config = getPortalConfig();
+
+    if (!config.functionAppName || !config.functionKey) {
+      throw new Error('Failed to terminate Durable orchestration instance: provider is not configured.');
+    }
+
+    const encodedInstanceId = encodeURIComponent(instanceId);
+    const terminateUrl = `https://${config.functionAppName}.azurewebsites.net/runtime/webhooks/durabletask/instances/${encodedInstanceId}/terminate?reason=${encodeURIComponent(reason)}&taskHub=${encodeURIComponent(config.taskHub)}&connection=${encodeURIComponent(config.connection)}&code=${encodeURIComponent(config.functionKey)}`;
+    const response = await fetch(terminateUrl, { method: 'POST' });
+
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Failed to terminate Durable orchestration instance: HTTP ${response.status}`);
+    }
+  }
 }

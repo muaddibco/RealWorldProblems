@@ -79,6 +79,27 @@ describe('durable mapping and stuck detection', () => {
 
     global.fetch = originalFetch;
   });
+
+  it('terminates an orchestration instance using the durable webhook endpoint', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn(async () => new Response('', { status: 202 })) as unknown as typeof fetch;
+
+    process.env.ORCHESTRATOR_FUNCTION_APP_NAME = 'example';
+    process.env.ORCHESTRATOR_FUNCTION_KEY = 'secret';
+    process.env.ORCHESTRATOR_TASK_HUB = 'RealWorldProblemsHub';
+    process.env.ORCHESTRATOR_CONNECTION = 'Storage';
+    process.env.ORCHESTRATOR_STATUS_PROVIDER = 'durable-http';
+
+    const provider = new DurableHttpOrchestratorStatusProvider();
+    await provider.terminateInstance('rw:muaddibco:RealWorldProblems:issue:42', 'manual retry from portal');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/runtime/webhooks/durabletask/instances/rw%3Amuaddibco%3ARealWorldProblems%3Aissue%3A42/terminate?'),
+      { method: 'POST' }
+    );
+
+    global.fetch = originalFetch;
+  });
 });
 
 describe('retry safety and aggregation', () => {
@@ -93,6 +114,22 @@ describe('retry safety and aggregation', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.retriedTooRecently).toBe(true);
+  });
+
+  it('allows retry for issues with rw/processing when orchestration status is available', () => {
+    const issueWithProcessing: GitHubIssueRecord = {
+      ...baseIssue,
+      labels: ['type/problem', 'stage/3-scored', 'rw/processing']
+    };
+
+    const result = evaluateRetryEligibility(
+      issueWithProcessing,
+      { ...activeOrchestration, status: 'queued', reason: 'queued' },
+      [],
+      new Date()
+    );
+
+    expect(result.allowed).toBe(true);
   });
 
   it('aggregates batch retry results without losing per-issue results', () => {
