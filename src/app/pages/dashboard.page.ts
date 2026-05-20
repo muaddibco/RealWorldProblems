@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalApiFacade } from '../services/portal-api.facade';
 import { PortalSettingsService } from '../services/portal-settings.service';
@@ -165,10 +165,15 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
                     <td>{{ issue.ageMinutes }}m</td>
                     <td>{{ labelsSummary(issue.labels) }}</td>
                     <td>
-                      <div class="action-stack">
-                        <a class="button" [href]="issue.htmlUrl" target="_blank" rel="noreferrer">Open</a>
-                        <a class="button" [routerLink]="['/issues', issue.number]">View details</a>
-                        <button class="button button-primary" type="button" [disabled]="!issue.retryAllowed" (click)="retryOne(issue.number)">Retry</button>
+                      <div class="action-menu-container" (click)="$event.stopPropagation()">
+                        <button class="button action-menu-trigger" type="button" [attr.aria-label]="'Actions for issue #' + issue.number" [attr.aria-expanded]="activeActionMenuIssueNumber() === issue.number" (click)="toggleActionMenu(issue.number)">...</button>
+                        @if (activeActionMenuIssueNumber() === issue.number) {
+                          <div class="action-menu">
+                            <a class="button" [href]="issue.htmlUrl" target="_blank" rel="noreferrer" (click)="closeActionMenu()">Open</a>
+                            <a class="button" [routerLink]="['/issues', issue.number]" (click)="closeActionMenu()">View details</a>
+                            <button class="button button-primary" type="button" [disabled]="!issue.retryAllowed" (click)="closeActionMenu(); retryOne(issue.number)">Retry</button>
+                          </div>
+                        }
                       </div>
                     </td>
                   </tr>
@@ -350,10 +355,31 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       max-width: 420px;
     }
 
-    .action-stack {
-      display: flex;
-      flex-wrap: wrap;
+    .action-menu-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .action-menu-trigger {
+      min-width: 40px;
+      padding-left: 10px;
+      padding-right: 10px;
+      letter-spacing: 1px;
+    }
+
+    .action-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      min-width: 150px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(8, 16, 28, 0.98);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      display: grid;
       gap: 8px;
+      z-index: 12;
     }
 
     .selected-row {
@@ -384,6 +410,7 @@ export class DashboardPageComponent implements OnDestroy {
   readonly error = signal<string | null>(null);
   readonly issues = signal<IssueCard[]>([]);
   readonly batchResults = signal<BatchRetryResult[]>([]);
+  readonly activeActionMenuIssueNumber = signal<number | null>(null);
   readonly selectedIssueNumbers = signal<Set<number>>(new Set());
   readonly viewMode = signal<'default' | 'all'>('default');
   readonly statusFilter = signal<DashboardStatusFilter>('all');
@@ -471,6 +498,26 @@ export class DashboardPageComponent implements OnDestroy {
     if (this.reloadTimer !== null) {
       clearTimeout(this.reloadTimer);
       this.reloadTimer = null;
+    }
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.closeActionMenu();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeActionMenu();
+  }
+
+  toggleActionMenu(issueNumber: number): void {
+    this.activeActionMenuIssueNumber.set(this.activeActionMenuIssueNumber() === issueNumber ? null : issueNumber);
+  }
+
+  closeActionMenu(): void {
+    if (this.activeActionMenuIssueNumber() !== null) {
+      this.activeActionMenuIssueNumber.set(null);
     }
   }
 
