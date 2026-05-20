@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "commonjs",
-  "main": "dist/src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@azure/functions": "^4.5.0",
-    "@octokit/auth-app": "^7.1.2",
+    "@octokit/auth-app": "^6.0.0",
     "@octokit/rest": "^20.1.2"
   },
   "devDependencies": {
