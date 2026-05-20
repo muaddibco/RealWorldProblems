@@ -530,7 +530,8 @@ export class DashboardPageComponent {
       this.selectedIssueNumbers.set(new Set());
       this.lastLoadErrorPopupMessage = null;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load issues';
+      const details = (error as { error?: { details?: string } } | null)?.error?.details;
+      const message = details ?? (error instanceof Error ? error.message : 'Failed to load issues');
       this.error.set(message);
       this.issues.set(this.lastSuccessfulIssues);
       if (this.lastLoadErrorPopupMessage !== message) {
