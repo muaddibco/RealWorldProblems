@@ -1,16 +1,17 @@
 {
   "name": "realworldproblems-portal",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "workspaces": [
     "api"
   ],
   "scripts": {
     "start": "ng serve --open",
     "build": "ng build",
-    "api:start": "npm run start --workspace api",
-    "api:build": "npm run build --workspace api",
-    "api:test": "npm run test --workspace api",
-    "test": "npm run test --workspace api"
+    "api:start": "yarn workspace realworldproblems-portal-api start",
+    "api:build": "yarn workspace realworldproblems-portal-api build",
+    "api:test": "yarn workspace realworldproblems-portal-api test",
+    "test": "yarn api:test"
   },
   "dependencies": {
     "@angular/animations": "^18.2.0",

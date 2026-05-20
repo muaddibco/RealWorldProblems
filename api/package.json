@@ -1,5 +1,6 @@
 {
   "name": "realworldproblems-portal-api",
+  "version": "0.0.0",
   "private": true,
   "type": "commonjs",
   "main": "dist/src/index.js",

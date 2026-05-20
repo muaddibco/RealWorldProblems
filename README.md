@@ -14,19 +14,19 @@ Internal control plane for `muaddibco/RealWorldProblems` issue orchestration. Th
 Install dependencies from the repository root:
 
 ```bash
-npm install
+yarn install
 ```
 
 Start the Angular app:
 
 ```bash
-npm start
+yarn start
 ```
 
 Run the Functions backend locally:
 
 ```bash
-npm run api:start
+yarn api:start
 ```
 
 The frontend defaults to mock data mode. Use the mode toggle in the header to switch to live API mode once the backend is running.
