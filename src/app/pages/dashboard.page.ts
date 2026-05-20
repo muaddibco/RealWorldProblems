@@ -378,6 +378,7 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
 export class DashboardPageComponent implements OnDestroy {
   private readonly api = inject(PortalApiFacade);
   readonly settings = inject(PortalSettingsService);
+  private lastLoadErrorPopupMessage: string | null = null;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -504,8 +505,14 @@ export class DashboardPageComponent implements OnDestroy {
       });
       this.issues.set(response.issues);
       this.selectedIssueNumbers.set(new Set());
+      this.lastLoadErrorPopupMessage = null;
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'Failed to load issues');
+      const message = error instanceof Error ? error.message : 'Failed to load issues';
+      this.error.set(message);
+      if (this.lastLoadErrorPopupMessage !== message) {
+        this.lastLoadErrorPopupMessage = message;
+        window.alert(message);
+      }
     } finally {
       this.loading.set(false);
     }
