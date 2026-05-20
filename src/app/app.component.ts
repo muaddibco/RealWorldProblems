@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { PortalApiFacade } from './services/portal-api.facade';
 import { PortalSettingsService } from './services/portal-settings.service';
 
 @Component({
@@ -17,7 +18,10 @@ import { PortalSettingsService } from './services/portal-settings.service';
         <div class="header-actions">
           <div class="mode-chip">
             <span class="tiny muted">Data mode</span>
-            <button class="button" type="button" (click)="toggleMode()">{{ settings.mode() === 'live' ? 'Live API' : 'Mock data' }}</button>
+            <button class="button mode-button" type="button" (click)="toggleMode()" [attr.title]="healthLabel()">
+              <span class="health-dot" [class.ok]="lastHealthProbeOk() === true" [class.fail]="lastHealthProbeOk() === false" [attr.title]="healthLabel()" [attr.aria-label]="healthLabel()"></span>
+              <span>{{ settings.mode() === 'live' ? 'Live API' : 'Mock data' }}</span>
+            </button>
           </div>
           <a routerLink="/" class="button button-primary">Dashboard</a>
         </div>
@@ -72,6 +76,31 @@ import { PortalSettingsService } from './services/portal-settings.service';
       background: rgba(255, 255, 255, 0.03);
     }
 
+    .mode-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(180, 192, 214, 0.45);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+      flex: 0 0 auto;
+    }
+
+    .health-dot.ok {
+      background: #6fe18c;
+      box-shadow: 0 0 0 1px rgba(111, 225, 140, 0.4);
+    }
+
+    .health-dot.fail {
+      background: #ff7f86;
+      box-shadow: 0 0 0 1px rgba(255, 127, 134, 0.4);
+    }
+
     .app-body {
       min-height: calc(100vh - 150px);
     }
@@ -91,8 +120,26 @@ import { PortalSettingsService } from './services/portal-settings.service';
 })
 export class AppComponent {
   readonly settings = inject(PortalSettingsService);
+  private readonly api = inject(PortalApiFacade);
+  readonly lastHealthProbeOk = this.api.lastHealthProbeOk;
 
-  toggleMode(): void {
+  constructor() {
+    void this.api.probeHealth();
+  }
+
+  healthLabel(): string {
+    const status = this.lastHealthProbeOk();
+    if (status === true) {
+      return 'API health check passed';
+    }
+    if (status === false) {
+      return 'API health check failed';
+    }
+    return 'API health not checked yet';
+  }
+
+  async toggleMode(): Promise<void> {
     this.settings.toggleMode();
+    await this.api.probeHealth();
   }
 }

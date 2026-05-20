@@ -128,36 +128,51 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
               </tr>
             </thead>
             <tbody>
-              @for (issue of filteredIssues(); track issue.number) {
-                <tr [class.selected-row]="selectedIssueNumbers().has(issue.number)">
-                  <td><input type="checkbox" [checked]="selectedIssueNumbers().has(issue.number)" (change)="toggleIssueSelection(issue.number, $any($event.target).checked)"></td>
-                  <td>
-                    <div class="issue-title">#{{ issue.number }} {{ issue.title }}</div>
-                    <div class="muted tiny">{{ issue.state }}</div>
-                  </td>
-                  <td><span class="pill">{{ issue.stageName ?? 'No stage' }}</span></td>
-                  <td>{{ issue.agentName ?? '—' }}</td>
-                  <td><span class="pill status-{{ issue.lifecycleStatus }}">{{ issue.lifecycleStatus }}</span></td>
-                  <td><span class="pill status-{{ issue.orchestrationStatus }}">{{ issue.orchestrationStatus }}</span></td>
-                  <td>
-                    <div class="reason-cell">
-                      <span>{{ issue.lifecycleStatusReason }}</span>
-                      @if (issue.retryBlockedReason) {
-                        <span class="muted tiny">{{ issue.retryBlockedReason }}</span>
-                      }
-                    </div>
-                  </td>
-                  <td>{{ issue.updatedAt | date:'medium' }}</td>
-                  <td>{{ issue.ageMinutes }}m</td>
-                  <td>{{ labelsSummary(issue.labels) }}</td>
-                  <td>
-                    <div class="action-stack">
-                      <a class="button" [href]="issue.htmlUrl" target="_blank" rel="noreferrer">Open</a>
-                      <a class="button" [routerLink]="['/issues', issue.number]">View details</a>
-                      <button class="button button-primary" type="button" [disabled]="!issue.retryAllowed" (click)="retryOne(issue.number)">Retry</button>
+              @if (loading()) {
+                <tr>
+                  <td colspan="11" class="table-state-cell">
+                    <div class="table-loading">
+                      <span class="table-spinner" aria-hidden="true"></span>
+                      <span>Loading issues…</span>
                     </div>
                   </td>
                 </tr>
+              } @else if (filteredIssues().length === 0) {
+                <tr>
+                  <td colspan="11" class="table-state-cell muted">No issues match the current filters.</td>
+                </tr>
+              } @else {
+                @for (issue of filteredIssues(); track issue.number) {
+                  <tr [class.selected-row]="selectedIssueNumbers().has(issue.number)">
+                    <td><input type="checkbox" [checked]="selectedIssueNumbers().has(issue.number)" (change)="toggleIssueSelection(issue.number, $any($event.target).checked)"></td>
+                    <td>
+                      <div class="issue-title">#{{ issue.number }} {{ issue.title }}</div>
+                      <div class="muted tiny">{{ issue.state }}</div>
+                    </td>
+                    <td><span class="pill">{{ issue.stageName ?? 'No stage' }}</span></td>
+                    <td>{{ issue.agentName ?? '—' }}</td>
+                    <td><span class="pill status-{{ issue.lifecycleStatus }}">{{ issue.lifecycleStatus }}</span></td>
+                    <td><span class="pill status-{{ issue.orchestrationStatus }}">{{ issue.orchestrationStatus }}</span></td>
+                    <td>
+                      <div class="reason-cell">
+                        <span>{{ issue.lifecycleStatusReason }}</span>
+                        @if (issue.retryBlockedReason) {
+                          <span class="muted tiny">{{ issue.retryBlockedReason }}</span>
+                        }
+                      </div>
+                    </td>
+                    <td>{{ issue.updatedAt | date:'medium' }}</td>
+                    <td>{{ issue.ageMinutes }}m</td>
+                    <td>{{ labelsSummary(issue.labels) }}</td>
+                    <td>
+                      <div class="action-stack">
+                        <a class="button" [href]="issue.htmlUrl" target="_blank" rel="noreferrer">Open</a>
+                        <a class="button" [routerLink]="['/issues', issue.number]">View details</a>
+                        <button class="button button-primary" type="button" [disabled]="!issue.retryAllowed" (click)="retryOne(issue.number)">Retry</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -270,6 +285,35 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
 
     .table-wrap {
       overflow: auto;
+    }
+
+    .table-state-cell {
+      text-align: center;
+      padding: 24px 12px;
+    }
+
+    .table-loading {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted-strong);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .table-spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     table {

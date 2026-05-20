@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { BatchRetryResponse, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
 import { HttpPortalApiService } from './http-portal-api.service';
 import { MockPortalApiService } from './mock-portal-api.service';
@@ -11,12 +11,29 @@ export class PortalApiFacade {
   private readonly httpApi = inject(HttpPortalApiService);
   private readonly mockApi = inject(MockPortalApiService);
 
+  readonly lastHealthProbeOk = signal<boolean | null>(null);
+
   private get activeApi(): PortalApiService {
     return this.settings.mode() === 'live' ? this.httpApi : this.mockApi;
   }
 
-  getHealth(): Promise<{ ok: true }> {
-    return this.activeApi.getHealth();
+  async getHealth(): Promise<{ ok: true }> {
+    try {
+      const response = await this.activeApi.getHealth();
+      this.lastHealthProbeOk.set(true);
+      return response;
+    } catch (error) {
+      this.lastHealthProbeOk.set(false);
+      throw error;
+    }
+  }
+
+  async probeHealth(): Promise<void> {
+    try {
+      await this.getHealth();
+    } catch {
+      // Only the last probe status is needed by the UI indicator.
+    }
   }
 
   getMe(): Promise<{ ok: true; user: PortalUser }> {
