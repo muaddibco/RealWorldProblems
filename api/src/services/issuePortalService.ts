@@ -14,6 +14,7 @@ import { buildIssueCard, buildIssueDetails, classifyLifecycleStatus, matchesIssu
 import { applyRetryStrategyLabels, evaluateRetryEligibility } from '../github/retryEligibility';
 import { getPrimaryStageLabel, getStageLabelsCount, isStageLabel } from '../orchestrator/stageConfig';
 import { aggregateBatchRetryResults } from './batchRetryAggregation';
+import { getCachedIssues, setCachedIssues, clearCache } from './tableStorageCacheManager';
 
 export type IssueListQuery = {
   status?: string | null;
@@ -22,6 +23,7 @@ export type IssueListQuery = {
   q?: string | null;
   defaultView?: boolean;
   limit?: number;
+  refresh?: boolean;
 };
 
 let cachedIssueCards: IssueCard[] | null = null;
@@ -46,6 +48,12 @@ function isIssueCardsCacheFresh(nowMs = Date.now()): boolean {
 function invalidateIssueCardsCache(): void {
   cachedIssueCards = null;
   cachedIssueCardsAtMs = 0;
+  
+  // Also clear Table Storage cache
+  clearCache().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: Failed to clear table storage cache: ${message}`);
+  });
 }
 
 function parseLabels(issue: GitHubIssueRecord): string[] {
@@ -124,12 +132,29 @@ async function hydrateIssueCards(): Promise<IssueCard[]> {
   }));
 }
 
-async function getHydratedIssueCards(): Promise<IssueCard[]> {
-  if (isIssueCardsCacheFresh()) {
+async function getHydratedIssueCards(forceRefresh: boolean = false): Promise<IssueCard[]> {
+  // Check Table Storage cache first (unless refresh requested)
+  if (!forceRefresh) {
+    try {
+      const cachedIssues = await getCachedIssues();
+      if (cachedIssues && cachedIssues.length > 0) {
+        console.log(`Serving ${cachedIssues.length} issues from table storage cache`);
+        cachedIssueCards = cachedIssues;
+        cachedIssueCardsAtMs = Date.now();
+        return cachedIssues;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Failed to retrieve from table storage, falling back to GitHub: ${message}`);
+    }
+  }
+
+  // Fall back to in-memory cache if fresh
+  if (!forceRefresh && isIssueCardsCacheFresh()) {
     return cachedIssueCards as IssueCard[];
   }
 
-  if (inFlightIssueCardsPromise) {
+  if (inFlightIssueCardsPromise && !forceRefresh) {
     return inFlightIssueCardsPromise;
   }
 
@@ -139,6 +164,16 @@ async function getHydratedIssueCards(): Promise<IssueCard[]> {
     const cards = await inFlightIssueCardsPromise;
     cachedIssueCards = cards;
     cachedIssueCardsAtMs = Date.now();
+    
+    // Store in Table Storage for persistence
+    try {
+      await setCachedIssues(cards);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Warning: Failed to persist cache to table storage: ${message}`);
+      // Continue anyway - in-memory cache is still valid
+    }
+    
     return cards;
   } finally {
     inFlightIssueCardsPromise = null;
@@ -146,7 +181,7 @@ async function getHydratedIssueCards(): Promise<IssueCard[]> {
 }
 
 export async function listIssues(query: IssueListQuery = {}): Promise<{ issues: IssueCard[]; total: number }> {
-  const cards = await getHydratedIssueCards();
+  const cards = await getHydratedIssueCards(query.refresh ?? false);
 
   const filtered = sortIssues(cards).filter((issue) => {
     if (query.defaultView ?? true) {

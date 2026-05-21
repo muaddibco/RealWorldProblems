@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "main": "dist/index.js",
   "scripts": {
@@ -15,6 +15,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@azure/data-tables": "^13.2.1",
     "@azure/functions": "^4.5.0",
     "@octokit/auth-app": "^6.0.0",
     "@octokit/rest": "^20.1.2"

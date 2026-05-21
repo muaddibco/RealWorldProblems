@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BatchRetryResponse, BatchRetryResult, IssueCard, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
+import { BatchRetryResponse, BatchRetryResult, CacheRefreshResponse, IssueCard, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
 import { PortalApiService } from './portal-api.service';
 
 function nowIso(): string {
@@ -223,6 +223,16 @@ export class MockPortalApiService extends PortalApiService {
     }
     return { ok: true, results };
   }
+
+    async refreshCache(): Promise<CacheRefreshResponse> {
+      const issues = this.filterIssues({ defaultView: false, limit: 250 });
+      return {
+        ok: true,
+        issues,
+        total: issues.length,
+        message: 'Cache refreshed (mock data)'
+      };
+    }
 
   private filterIssues(params: Record<string, string | number | boolean | undefined>): IssueCard[] {
     const status = typeof params.status === 'string' ? params.status : 'all';

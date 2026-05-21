@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { BatchRetryResponse, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
+import { BatchRetryResponse, CacheRefreshResponse, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
 import { PortalApiService } from './portal-api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -39,5 +39,9 @@ export class HttpPortalApiService extends PortalApiService {
 
   retryBatch(issueNumbers: number[], reason: string): Promise<BatchRetryResponse> {
     return firstValueFrom(this.http.post<BatchRetryResponse>('/api/issues/retry-batch', { issueNumbers, reason }));
+  }
+
+  refreshCache(): Promise<CacheRefreshResponse> {
+    return firstValueFrom(this.http.post<CacheRefreshResponse>('/api/cache/refresh', {}));
   }
 }

@@ -73,6 +73,17 @@ export type IssueListResponse = {
   issues: IssueCard[];
   total: number;
   summary: Record<string, number>;
+  cacheInfo?: {
+    source: 'cache' | 'github';
+    timestamp: number;
+  };
+};
+
+export type CacheRefreshResponse = {
+  ok: true;
+  issues: IssueCard[];
+  total: number;
+  message: string;
 };
 
 export type PortalApiResult<T> = Promise<T>;

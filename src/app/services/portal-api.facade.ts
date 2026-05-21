@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { BatchRetryResponse, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
+import { BatchRetryResponse, CacheRefreshResponse, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
 import { HttpPortalApiService } from './http-portal-api.service';
 import { MockPortalApiService } from './mock-portal-api.service';
 import { PortalApiService } from './portal-api.service';
@@ -54,5 +54,9 @@ export class PortalApiFacade {
 
   retryBatch(issueNumbers: number[], reason: string): Promise<BatchRetryResponse> {
     return this.activeApi.retryBatch(issueNumbers, reason);
+  }
+
+  refreshCache(): Promise<CacheRefreshResponse> {
+    return this.activeApi.refreshCache();
   }
 }

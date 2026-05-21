@@ -23,10 +23,20 @@ async function handler(request: HttpRequest, _context: InvocationContext): Promi
       stage: query.get('stage'),
       q: query.get('q'),
       defaultView: query.has('defaultView') ? parseBoolean(query.get('defaultView')) : true,
-      limit: parseLimit(query.get('limit'))
+      limit: parseLimit(query.get('limit')),
+      refresh: query.has('refresh') ? parseBoolean(query.get('refresh')) : false
     });
 
-    return jsonResponse({ ok: true, issues: result.issues, total: result.total, summary: buildIssueSummary(result.issues) });
+      return jsonResponse({ 
+        ok: true, 
+        issues: result.issues, 
+        total: result.total, 
+        summary: buildIssueSummary(result.issues),
+        cacheInfo: {
+          source: query.has('refresh') && parseBoolean(query.get('refresh')) ? 'github' : 'cache',
+          timestamp: Date.now()
+        }
+      });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return apiError('Failed to list issues', message);

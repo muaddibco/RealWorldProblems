@@ -5,6 +5,9 @@
     "staticWebAppName": {
       "value": "${STATIC_WEB_APP_NAME}"
     },
+    "storageAccountName": {
+      "value": "${STORAGE_ACCOUNT_NAME}"
+    },
     "location": {
       "value": "${AZURE_LOCATION}"
     },

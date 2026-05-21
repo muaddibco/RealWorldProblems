@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BatchRetryResponse, IssueCard, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
+import { BatchRetryResponse, CacheRefreshResponse, IssueCard, IssueDetails, IssueListResponse, PortalUser } from '../types/models';
 
 @Injectable({ providedIn: 'root' })
 export abstract class PortalApiService {
@@ -9,4 +9,5 @@ export abstract class PortalApiService {
   abstract getIssue(issueNumber: number): Promise<{ ok: true; issue: IssueDetails }>;
   abstract retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }>;
   abstract retryBatch(issueNumbers: number[], reason: string): Promise<BatchRetryResponse>;
+  abstract refreshCache(): Promise<CacheRefreshResponse>;
 }

@@ -26,6 +26,15 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
             <button class="button" type="button" (click)="reload()" [disabled]="loading()">Refresh</button>
             <button class="button button-primary" type="button" (click)="retrySelected()" [disabled]="!hasSelectedRetryable()">Retry selected</button>
             <button class="button button-primary" type="button" (click)="retryAllShown()" [disabled]="!hasShownRetryable()">Retry all shown</button>
+            <button class="button button-secondary" type="button" (click)="refreshCache()" [disabled]="isRefreshingCache() || loading()">
+              @if (isRefreshingCache()) {
+                <span class="table-spinner" aria-hidden="true"></span>
+              }
+              {{ isRefreshingCache() ? 'Refreshing...' : 'Hard refresh' }}
+            </button>
+          </div>
+          <div class="cache-status">
+            <span class="muted tiny">{{ cacheStatusText() }}</span>
           </div>
         </div>
 
@@ -209,6 +218,14 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       flex-wrap: wrap;
       gap: 10px;
     }
+
+      .cache-status {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: rgba(97, 214, 199, 0.08);
+        border-left: 3px solid rgba(97, 214, 199, 0.4);
+      }
 
     .view-toggle {
       display: flex;
@@ -533,6 +550,18 @@ export class DashboardPageComponent {
   readonly stageFilter = signal<string>('all');
   readonly orchestrationFilter = signal<string>('all');
   readonly search = signal('');
+    readonly cacheSource = signal<'cache' | 'github' | null>(null);
+    readonly cacheTimestamp = signal<number | null>(null);
+    readonly isRefreshingCache = signal(false);
+
+    readonly cacheStatusText = computed(() => {
+      const source = this.cacheSource();
+      const timestamp = this.cacheTimestamp();
+      if (!source || !timestamp) return 'Loading...';
+      const date = new Date(timestamp);
+      const timeStr = date.toLocaleTimeString();
+      return `${source === 'cache' ? '📦 Cached' : '🔄 Fresh from GitHub'} at ${timeStr}`;
+    });
 
   readonly orchestrationOptions = ['not_started', 'queued', 'running', 'continued_as_new', 'completed', 'failed', 'cancelled', 'terminated', 'cooldown_active', 'blocked_or_noop', 'no_eligible_stage', 'not_claimed', 'stale', 'unknown'];
   readonly stageOptions = [
@@ -644,6 +673,8 @@ export class DashboardPageComponent {
       this.lastSuccessfulIssues = response.issues;
       this.selectedIssueNumbers.set(new Set());
       this.lastLoadErrorPopupMessage = null;
+        this.cacheSource.set(response.cacheInfo?.source ?? 'cache');
+        this.cacheTimestamp.set(response.cacheInfo?.timestamp ?? Date.now());
     } catch (error) {
       const details = (error as { error?: { details?: string } } | null)?.error?.details;
       const message = details ?? (error instanceof Error ? error.message : 'Failed to load issues');
@@ -657,6 +688,29 @@ export class DashboardPageComponent {
       this.loading.set(false);
     }
   }
+
+    async refreshCache(): Promise<void> {
+      this.isRefreshingCache.set(true);
+      this.error.set(null);
+      try {
+        const response = await this.api.refreshCache();
+        this.issues.set(response.issues);
+        this.lastSuccessfulIssues = response.issues;
+        this.selectedIssueNumbers.set(new Set());
+        this.cacheSource.set('github');
+        this.cacheTimestamp.set(Date.now());
+        this.lastLoadErrorPopupMessage = null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to refresh cache';
+        this.error.set(message);
+        if (this.lastLoadErrorPopupMessage !== message) {
+          this.lastLoadErrorPopupMessage = message;
+          window.alert(message);
+        }
+      } finally {
+        this.isRefreshingCache.set(false);
+      }
+    }
 
   setStatusFilter(value: string): void {
     this.statusFilter.set(value as DashboardStatusFilter);
