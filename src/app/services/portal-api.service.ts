@@ -7,6 +7,6 @@ export abstract class PortalApiService {
   abstract getMe(): Promise<{ ok: true; user: PortalUser }>;
   abstract listIssues(params: Record<string, string | number | boolean | undefined>): Promise<IssueListResponse>;
   abstract getIssue(issueNumber: number): Promise<{ ok: true; issue: IssueDetails }>;
-  abstract retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string; retriedTooRecently?: boolean }>;
+  abstract retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }>;
   abstract retryBatch(issueNumbers: number[], reason: string): Promise<BatchRetryResponse>;
 }

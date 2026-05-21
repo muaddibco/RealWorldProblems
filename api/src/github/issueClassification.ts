@@ -158,8 +158,7 @@ export function buildIssueCard(issue: GitHubIssueRecord, orchestrationStatus: Or
     updatedAt: issue.updated_at,
     ageMinutes,
     retryAllowed: retryEligibility.allowed,
-    retryBlockedReason: retryEligibility.reason,
-    retriedTooRecently: retryEligibility.retriedTooRecently
+    retryBlockedReason: retryEligibility.reason
   };
 
   card.isStuck = computeIsStuck(card);

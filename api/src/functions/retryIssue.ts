@@ -22,7 +22,7 @@ async function handler(request: HttpRequest, _context: InvocationContext): Promi
     const result = await retryIssue(issueNumber, reason, user.displayName);
 
     if (!result.ok) {
-      return jsonResponse({ ok: false, issueNumber: result.issueNumber, message: result.message, retriedTooRecently: result.retriedTooRecently ?? false }, 400);
+      return jsonResponse({ ok: false, issueNumber: result.issueNumber, message: result.message }, 400);
     }
 
     return jsonResponse({ ok: true, issueNumber: result.issueNumber, stageLabel: result.stageLabel, strategy: result.strategy, message: result.message });

@@ -56,7 +56,6 @@ export type IssueCard = {
   ageMinutes: number;
   retryAllowed: boolean;
   retryBlockedReason?: string;
-  retriedTooRecently?: boolean;
 };
 
 export type IssueDetails = IssueCard & {
@@ -77,7 +76,6 @@ export type BatchRetryResult = {
   stageLabel?: string;
   strategy?: RetryStrategy;
   message: string;
-  retriedTooRecently?: boolean;
 };
 
 export type BatchRetryResponse = { ok: true; results: BatchRetryResult[] };
@@ -86,7 +84,7 @@ export type ApiError = { ok: false; message: string; details?: unknown };
 
 export type PortalUser = { isAuthenticated: boolean; userId?: string; displayName?: string; email?: string; authProvider?: string; roles?: string[]; mock?: boolean };
 
-export type RetryEligibility = { allowed: boolean; reason?: string; retriedTooRecently?: boolean; strategy?: RetryStrategy };
+export type RetryEligibility = { allowed: boolean; reason?: string; strategy?: RetryStrategy };
 
 export type GitHubIssueRecord = {
   number: number;

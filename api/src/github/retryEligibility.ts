@@ -1,24 +1,9 @@
-import { getPortalConfig } from '../shared/portalConfig';
 import { GitHubIssueRecord, OrchestratorIssueStatus, RetryEligibility, RetryStrategy } from '../types';
 import { classifyLifecycleStatus, lifecycleIncludesTypeProblem, unknownStageLabels } from './issueClassification';
 import { isStageLabel } from '../orchestrator/stageConfig';
 
 function getStageLabels(labels: string[]): string[] {
   return labels.filter((label) => label.startsWith('stage/'));
-}
-
-export function getPortalRetryCommentAgeMinutes(comments: { body: string; created_at?: string; createdAt?: string }[], now = new Date()): number | null {
-  const matching = comments
-    .filter((comment) => comment.body.startsWith('[portal] Manual retry requested'))
-    .map((comment) => new Date(comment.created_at ?? comment.createdAt ?? '').getTime())
-    .filter((time) => Number.isFinite(time));
-
-  if (matching.length === 0) {
-    return null;
-  }
-
-  const latest = Math.max(...matching);
-  return Math.max(0, Math.floor((now.getTime() - latest) / 60000));
 }
 
 export function determineRetryStrategy(issue: GitHubIssueRecord): RetryStrategy | null {
@@ -29,11 +14,10 @@ export function determineRetryStrategy(issue: GitHubIssueRecord): RetryStrategy 
   return 'reapplied-stage-label';
 }
 
-export function evaluateRetryEligibility(issue: GitHubIssueRecord, orchestrationStatus: OrchestratorIssueStatus, recentComments: { body: string; created_at?: string; createdAt?: string }[] = [], now = new Date()): RetryEligibility {
+export function evaluateRetryEligibility(issue: GitHubIssueRecord, orchestrationStatus: OrchestratorIssueStatus): RetryEligibility {
   const labels = issue.labels.map((label) => typeof label === 'string' ? label : label?.name ?? '').filter(Boolean);
   const stageLabels = getStageLabels(labels);
   const lifecycleStatus = classifyLifecycleStatus(labels, issue.state);
-  const retryCooldownSeconds = getPortalConfig().retryCooldownSeconds;
 
   if (!lifecycleIncludesTypeProblem(labels)) {
     return { allowed: false, reason: 'Retry refused: issue does not have type/problem.' };
@@ -64,11 +48,6 @@ export function evaluateRetryEligibility(issue: GitHubIssueRecord, orchestration
   }
   if (unknownStageLabels(labels).length > 0) {
     return { allowed: false, reason: 'Retry refused: issue has an unknown stage label.' };
-  }
-
-  const portalRetryAgeMinutes = getPortalRetryCommentAgeMinutes(recentComments, now);
-  if (portalRetryAgeMinutes !== null && portalRetryAgeMinutes < retryCooldownSeconds / 60) {
-    return { allowed: false, reason: 'Issue was retried too recently', retriedTooRecently: true };
   }
 
   if (orchestrationStatus.status === 'unknown') {

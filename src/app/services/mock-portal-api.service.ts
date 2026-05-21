@@ -39,7 +39,6 @@ const MOCK_ISSUES: MockIssue[] = [
     ageMinutes: 32,
     retryAllowed: false,
     retryBlockedReason: 'Retry refused: issue is currently processing in Durable Functions.',
-    retriedTooRecently: false,
     body: 'A label change starts orchestration but the issue never reaches the next stage.',
     createdAt: minutesAgo(2600),
     commentsUrl: 'https://api.github.com/repos/muaddibco/RealWorldProblems/issues/86/comments',
@@ -203,13 +202,13 @@ export class MockPortalApiService extends PortalApiService {
     return { ok: true, issue: issue as IssueDetails };
   }
 
-  async retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string; retriedTooRecently?: boolean }> {
+  async retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }> {
     const issue = this.issues.find((item) => item.number === issueNumber);
     if (!issue) {
-      return { ok: false, issueNumber, message: 'Retry refused: issue not found.', retriedTooRecently: false };
+      return { ok: false, issueNumber, message: 'Retry refused: issue not found.' };
     }
     if (!issue.retryAllowed) {
-      return { ok: false, issueNumber, message: issue.retryBlockedReason ?? 'Retry refused.', retriedTooRecently: Boolean(issue.retriedTooRecently) };
+      return { ok: false, issueNumber, message: issue.retryBlockedReason ?? 'Retry refused.' };
     }
     issue.recentComments = [...issue.recentComments, { author: 'portal', body: `[portal] Manual retry requested for \`${issue.stageLabel ?? 'unknown'}\`.\n\nStrategy: ${issue.labels.includes('status/orchestration-failed') ? 'removed-orchestration-failed' : 'reapplied-stage-label'}\nReason: ${reason}\nRequested by: mock-user`, createdAt: nowIso() }];
     issue.updatedAt = nowIso();
@@ -220,7 +219,7 @@ export class MockPortalApiService extends PortalApiService {
     const results: BatchRetryResult[] = [];
     for (const issueNumber of issueNumbers) {
       const result = await this.retryIssue(issueNumber, reason);
-      results.push(result.ok ? { issueNumber, ok: true, stageLabel: result.stageLabel, strategy: result.strategy as any, message: result.message } : { issueNumber, ok: false, message: result.message, retriedTooRecently: result.retriedTooRecently });
+      results.push(result.ok ? { issueNumber, ok: true, stageLabel: result.stageLabel, strategy: result.strategy as any, message: result.message } : { issueNumber, ok: false, message: result.message });
     }
     return { ok: true, results };
   }

@@ -103,19 +103,6 @@ describe('durable mapping and stuck detection', () => {
 });
 
 describe('retry safety and aggregation', () => {
-  it('rejects retry when the issue is too recently retried', () => {
-    process.env.PORTAL_RETRY_COOLDOWN_SECONDS = '120';
-    const result = evaluateRetryEligibility(
-      baseIssue,
-      { ...activeOrchestration, status: 'not_started', reason: 'none' },
-      [{ body: '[portal] Manual retry requested for `stage/3-scored`.', created_at: new Date(Date.now() - 60 * 1000).toISOString() }],
-      new Date()
-    );
-
-    expect(result.allowed).toBe(false);
-    expect(result.retriedTooRecently).toBe(true);
-  });
-
   it('allows retry for issues with rw/processing when orchestration status is available', () => {
     const issueWithProcessing: GitHubIssueRecord = {
       ...baseIssue,
@@ -124,9 +111,7 @@ describe('retry safety and aggregation', () => {
 
     const result = evaluateRetryEligibility(
       issueWithProcessing,
-      { ...activeOrchestration, status: 'queued', reason: 'queued' },
-      [],
-      new Date()
+      { ...activeOrchestration, status: 'queued', reason: 'queued' }
     );
 
     expect(result.allowed).toBe(true);

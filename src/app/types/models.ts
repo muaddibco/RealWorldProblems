@@ -31,7 +31,6 @@ export type IssueCard = {
   ageMinutes: number;
   retryAllowed: boolean;
   retryBlockedReason?: string;
-  retriedTooRecently?: boolean;
 };
 
 export type IssueDetails = IssueCard & {
@@ -52,7 +51,6 @@ export type BatchRetryResult = {
   stageLabel?: string;
   strategy?: RetryStrategy;
   message: string;
-  retriedTooRecently?: boolean;
 };
 
 export type BatchRetryResponse = {

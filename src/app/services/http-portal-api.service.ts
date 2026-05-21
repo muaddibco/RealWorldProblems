@@ -33,8 +33,8 @@ export class HttpPortalApiService extends PortalApiService {
     return firstValueFrom(this.http.get<{ ok: true; issue: IssueDetails }>(`/api/issues/${issueNumber}`));
   }
 
-  retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string; retriedTooRecently?: boolean }> {
-    return firstValueFrom(this.http.post<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string; retriedTooRecently?: boolean }>(`/api/issues/${issueNumber}/retry`, { reason }));
+  retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }> {
+    return firstValueFrom(this.http.post<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }>(`/api/issues/${issueNumber}/retry`, { reason }));
   }
 
   retryBatch(issueNumbers: number[], reason: string): Promise<BatchRetryResponse> {

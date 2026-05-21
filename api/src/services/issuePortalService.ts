@@ -99,8 +99,8 @@ function sortIssues(issues: IssueCard[]): IssueCard[] {
   return [...issues].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.number - right.number);
 }
 
-function buildSafeRetryEligibility(issue: GitHubIssueRecord, orchestrationStatus: OrchestratorIssueStatus, recentComments: { body: string; created_at?: string; createdAt?: string }[] = []): RetryEligibility {
-  return evaluateRetryEligibility(issue, orchestrationStatus, recentComments);
+function buildSafeRetryEligibility(issue: GitHubIssueRecord, orchestrationStatus: OrchestratorIssueStatus): RetryEligibility {
+  return evaluateRetryEligibility(issue, orchestrationStatus);
 }
 
 async function getIssueOrchestrationStatus(issueNumber: number, stageLabel: string | null): Promise<OrchestratorIssueStatus> {
@@ -113,23 +113,13 @@ async function getIssueOrchestrationStatus(issueNumber: number, stageLabel: stri
   }
 }
 
-async function getRecentComments(issueNumber: number): Promise<{ author: string; body: string; createdAt: string }[]> {
-  try {
-    const comments = await githubClient.listComments(issueNumber);
-    return comments.slice(-5).map((comment) => ({ author: comment.user?.login ?? 'unknown', body: comment.body, createdAt: comment.created_at }));
-  } catch {
-    return [];
-  }
-}
-
 async function hydrateIssueCards(): Promise<IssueCard[]> {
   const rawIssues = await githubClient.listIssues();
   return Promise.all(rawIssues.map(async (issue) => {
     const labels = parseLabels(issue);
     const stageLabel = getPrimaryStageLabel(labels);
     const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
-    const recentComments = await getRecentComments(issue.number);
-    const retryEligibility = buildSafeRetryEligibility(issue, orchestrationStatus, recentComments);
+    const retryEligibility = buildSafeRetryEligibility(issue, orchestrationStatus);
     return buildIssueCard(issue, orchestrationStatus, retryEligibility);
   }));
 }
@@ -194,39 +184,38 @@ export async function getIssueDetails(issueNumber: number): Promise<IssueDetails
   const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
   const recentCommentRecords = await githubClient.listComments(issue.number);
   const recentComments = recentCommentRecords.slice(-5).map((comment) => ({ author: comment.user?.login ?? 'unknown', body: comment.body, createdAt: comment.created_at }));
-  const retryEligibility = buildSafeRetryEligibility(issue, orchestrationStatus, recentComments);
+  const retryEligibility = buildSafeRetryEligibility(issue, orchestrationStatus);
   const card = buildIssueCard(issue, orchestrationStatus, retryEligibility);
 
   return buildIssueDetails(issue, card, recentComments, orchestrationStatus.raw ?? orchestrationStatus.output ?? orchestrationStatus);
 }
 
-export async function retryIssue(issueNumber: number, reason: string, requestedBy?: string): Promise<{ ok: true; issueNumber: number; stageLabel: string; strategy: RetryStrategy; message: string } | { ok: false; issueNumber: number; message: string; retriedTooRecently: boolean }> {
+export async function retryIssue(issueNumber: number, reason: string, requestedBy?: string): Promise<{ ok: true; issueNumber: number; stageLabel: string; strategy: RetryStrategy; message: string } | { ok: false; issueNumber: number; message: string }> {
   const issue = await githubClient.getIssue(issueNumber);
   if (!issue) {
-    return { ok: false, issueNumber, message: 'Retry refused: issue not found.', retriedTooRecently: false };
+    return { ok: false, issueNumber, message: 'Retry refused: issue not found.' };
   }
 
   const labels = parseLabels(issue);
   const stageLabel = getPrimaryStageLabel(labels);
   const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
-  const recentComments = await getRecentComments(issue.number);
-  const retryEligibility = evaluateRetryEligibility(issue, orchestrationStatus, recentComments);
+  const retryEligibility = evaluateRetryEligibility(issue, orchestrationStatus);
   const lifecycleStatus = classifyLifecycleStatus(labels, issue.state);
 
   if (!retryEligibility.allowed) {
-    return { ok: false, issueNumber, message: `Retry refused: ${retryEligibility.reason ?? 'unknown safety rule'}`, retriedTooRecently: Boolean(retryEligibility.retriedTooRecently) };
+    return { ok: false, issueNumber, message: `Retry refused: ${retryEligibility.reason ?? 'unknown safety rule'}` };
   }
 
   if (orchestrationStatus.status === 'queued' || orchestrationStatus.status === 'running') {
     if (!orchestratorStatusProvider.terminateInstance) {
-      return { ok: false, issueNumber, message: 'Retry refused: orchestrator status provider does not support termination.', retriedTooRecently: false };
+      return { ok: false, issueNumber, message: 'Retry refused: orchestrator status provider does not support termination.' };
     }
 
     try {
       await orchestratorStatusProvider.terminateInstance(orchestrationStatus.instanceId, reason);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return { ok: false, issueNumber, message: `Retry refused: ${message}`, retriedTooRecently: false };
+      return { ok: false, issueNumber, message: `Retry refused: ${message}` };
     }
   }
 
@@ -274,7 +263,7 @@ export async function retryIssues(issueNumbers: number[], reason: string, reques
       if (result.ok) {
         results.push({ issueNumber, ok: true, stageLabel: result.stageLabel, strategy: result.strategy, message: result.message });
       } else {
-        results.push({ issueNumber, ok: false, message: result.message, retriedTooRecently: result.retriedTooRecently });
+        results.push({ issueNumber, ok: false, message: result.message });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

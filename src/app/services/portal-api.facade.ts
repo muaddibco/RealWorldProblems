@@ -48,7 +48,7 @@ export class PortalApiFacade {
     return this.activeApi.getIssue(issueNumber);
   }
 
-  retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string; retriedTooRecently?: boolean }> {
+  retryIssue(issueNumber: number, reason: string): Promise<{ ok: boolean; issueNumber: number; message: string; stageLabel?: string; strategy?: string }> {
     return this.activeApi.retryIssue(issueNumber, reason);
   }
 

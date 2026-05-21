@@ -720,7 +720,7 @@ export class DashboardPageComponent {
     }
 
     const result = await this.api.retryIssue(issue.number, 'manual retry from portal');
-    this.batchResults.set([result.ok ? { issueNumber: result.issueNumber, ok: true, stageLabel: result.stageLabel, strategy: result.strategy as any, message: result.message } : { issueNumber: result.issueNumber, ok: false, message: result.message, retriedTooRecently: result.retriedTooRecently }]);
+    this.batchResults.set([result.ok ? { issueNumber: result.issueNumber, ok: true, stageLabel: result.stageLabel, strategy: result.strategy as any, message: result.message } : { issueNumber: result.issueNumber, ok: false, message: result.message }]);
     await this.reload();
   }
 
@@ -729,7 +729,7 @@ export class DashboardPageComponent {
     if (issueNumbers.length === 0) {
       return;
     }
-    const confirmed = window.confirm(`You are about to request retry for ${issueNumbers.length} issues.\n\nEach issue will be re-read and validated by the backend. Terminal, blocked, invalid, actively processing, or recently retried issues will be skipped.`);
+    const confirmed = window.confirm(`You are about to request retry for ${issueNumbers.length} issues.\n\nEach issue will be re-read and validated by the backend. Terminal, blocked, invalid, or actively processing issues will be skipped.`);
     if (!confirmed) {
       return;
     }
@@ -743,7 +743,7 @@ export class DashboardPageComponent {
     if (issueNumbers.length === 0) {
       return;
     }
-    const confirmed = window.confirm(`You are about to request retry for ${issueNumbers.length} issues.\n\nEach issue will be re-read and validated by the backend. Terminal, blocked, invalid, actively processing, or recently retried issues will be skipped.`);
+    const confirmed = window.confirm(`You are about to request retry for ${issueNumbers.length} issues.\n\nEach issue will be re-read and validated by the backend. Terminal, blocked, invalid, or actively processing issues will be skipped.`);
     if (!confirmed) {
       return;
     }
