@@ -21,9 +21,22 @@ function normalizeLabels(labels: GitHubIssueRecord['labels']): string[] {
 function normalizePrivateKey(rawPrivateKey: string): string {
   const trimmed = rawPrivateKey.trim();
 
-  // Support secrets stored with escaped newlines (common in CI and Key Vault).
-  if (trimmed.includes('\\n')) {
-    return trimmed.replace(/\\n/g, '\n');
+  // Some environments double-escape newline sequences (for example: \\n).
+  // Decode escaped line breaks in a few passes until the value stabilizes.
+  let decoded = trimmed;
+  for (let index = 0; index < 5; index += 1) {
+    const next = decoded
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\n')
+      .replace(/\\+\n/g, '\n');
+    if (next === decoded) {
+      break;
+    }
+    decoded = next;
+  }
+  if (decoded !== trimmed) {
+    return decoded;
   }
 
   // Support single-line PEM values by restoring line breaks around the body.
