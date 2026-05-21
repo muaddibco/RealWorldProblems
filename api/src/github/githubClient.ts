@@ -18,6 +18,26 @@ function normalizeLabels(labels: GitHubIssueRecord['labels']): string[] {
     .filter((label): label is string => Boolean(label));
 }
 
+function normalizePrivateKey(rawPrivateKey: string): string {
+  const trimmed = rawPrivateKey.trim();
+
+  // Support secrets stored with escaped newlines (common in CI and Key Vault).
+  if (trimmed.includes('\\n')) {
+    return trimmed.replace(/\\n/g, '\n');
+  }
+
+  // Support single-line PEM values by restoring line breaks around the body.
+  const singleLinePem = /^-----BEGIN ([A-Z0-9 ]+)-----(.+)-----END \1-----$/s.exec(trimmed);
+  if (!singleLinePem) {
+    return trimmed;
+  }
+
+  const [, label, body] = singleLinePem;
+  const compactBody = body.replace(/\s+/g, '');
+  const wrappedBody = compactBody.match(/.{1,64}/g)?.join('\n') ?? compactBody;
+  return `-----BEGIN ${label}-----\n${wrappedBody}\n-----END ${label}-----`;
+}
+
 class OctokitGitHubClient implements GitHubRepositoryClient {
   private readonly octokit: Octokit;
   private readonly owner: string;
@@ -33,7 +53,7 @@ class OctokitGitHubClient implements GitHubRepositoryClient {
         authStrategy: createAppAuth,
         auth: {
           appId: Number(process.env.GITHUB_APP_ID),
-          privateKey: process.env.GITHUB_PRIVATE_KEY,
+          privateKey: normalizePrivateKey(process.env.GITHUB_PRIVATE_KEY),
           installationId: Number(process.env.GITHUB_INSTALLATION_ID)
         }
       });
