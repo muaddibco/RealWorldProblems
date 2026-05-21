@@ -111,7 +111,7 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
         </div>
 
         <div class="table-wrap">
-          <table>
+          <table class="issues-table">
             <thead>
               <tr>
                 <th><input type="checkbox" [checked]="allShownSelected()" (change)="toggleSelectAllShown($any($event.target).checked)"></th>
@@ -144,16 +144,16 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
               } @else {
                 @for (issue of filteredIssues(); track issue.number) {
                   <tr [class.selected-row]="selectedIssueNumbers().has(issue.number)">
-                    <td><input type="checkbox" [checked]="selectedIssueNumbers().has(issue.number)" (change)="toggleIssueSelection(issue.number, $any($event.target).checked)"></td>
-                    <td>
+                    <td class="cell-select" data-label="Select"><input type="checkbox" [checked]="selectedIssueNumbers().has(issue.number)" (change)="toggleIssueSelection(issue.number, $any($event.target).checked)"></td>
+                    <td data-label="Issue">
                       <div class="issue-title">#{{ issue.number }} {{ issue.title }}</div>
                       <div class="muted tiny">{{ issue.state }}</div>
                     </td>
-                    <td><span class="pill">{{ issue.stageName ?? 'No stage' }}</span></td>
-                    <td>{{ issue.agentName ?? '—' }}</td>
-                    <td><span class="pill status-{{ issue.lifecycleStatus }}">{{ issue.lifecycleStatus }}</span></td>
-                    <td><span class="pill status-{{ issue.orchestrationStatus }}">{{ issue.orchestrationStatus }}</span></td>
-                    <td>
+                    <td data-label="Stage"><span class="pill">{{ issue.stageName ?? 'No stage' }}</span></td>
+                    <td data-label="Agent">{{ issue.agentName ?? '—' }}</td>
+                    <td data-label="Lifecycle Status"><span class="pill status-{{ issue.lifecycleStatus }}">{{ issue.lifecycleStatus }}</span></td>
+                    <td data-label="Orchestration Status"><span class="pill status-{{ issue.orchestrationStatus }}">{{ issue.orchestrationStatus }}</span></td>
+                    <td data-label="Status Reason">
                       <div class="reason-cell">
                         <span>{{ issue.lifecycleStatusReason }}</span>
                         @if (issue.retryBlockedReason) {
@@ -161,10 +161,10 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
                         }
                       </div>
                     </td>
-                    <td>{{ issue.updatedAt | date:'medium' }}</td>
-                    <td>{{ issue.ageMinutes }}m</td>
-                    <td>{{ labelsSummary(issue.labels) }}</td>
-                    <td>
+                    <td data-label="Updated">{{ issue.updatedAt | date:'medium' }}</td>
+                    <td data-label="Age">{{ issue.ageMinutes }}m</td>
+                    <td data-label="Labels Summary">{{ labelsSummary(issue.labels) }}</td>
+                    <td class="cell-actions" data-label="Actions">
                       <div class="action-menu-container" (click)="$event.stopPropagation()">
                         <button class="button action-menu-trigger" type="button" [attr.aria-label]="'Actions for issue #' + issue.number" [attr.aria-expanded]="activeActionMenuIssueNumber() === issue.number" (click)="toggleActionMenu(issue.number)">...</button>
                         @if (activeActionMenuIssueNumber() === issue.number) {
@@ -292,6 +292,12 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       overflow: auto;
     }
 
+    .issues-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1280px;
+    }
+
     .table-state-cell {
       text-align: center;
       padding: 24px 12px;
@@ -321,12 +327,6 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       }
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 1280px;
-    }
-
     th, td {
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       padding: 14px 10px;
@@ -353,6 +353,14 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       display: grid;
       gap: 6px;
       max-width: 420px;
+    }
+
+    .cell-select {
+      width: 44px;
+    }
+
+    .cell-actions {
+      width: 78px;
     }
 
     .action-menu-container {
@@ -397,6 +405,113 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
       .filters-grid,
       .summary-grid {
         grid-template-columns: 1fr;
+      }
+
+      .controls-actions,
+      .view-toggle {
+        width: 100%;
+      }
+
+      .controls-actions .button {
+        flex: 1 1 auto;
+      }
+
+      .table-panel {
+        padding: 14px;
+      }
+
+      .table-wrap {
+        overflow: visible;
+      }
+
+      .issues-table {
+        min-width: 0;
+      }
+
+      .issues-table thead {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+      }
+
+      .issues-table tbody,
+      .issues-table tr,
+      .issues-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .issues-table tr {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .issues-table td {
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 10px 0;
+        display: grid;
+        grid-template-columns: minmax(0, 124px) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .issues-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .issues-table td:last-child {
+        border-bottom: 0;
+      }
+
+      .issues-table .table-state-cell {
+        display: block;
+        padding: 18px 8px;
+        border-bottom: 0;
+      }
+
+      .issues-table .table-state-cell::before {
+        content: none;
+      }
+
+      .issues-table .selected-row {
+        background: rgba(97, 214, 199, 0.1);
+      }
+
+      .cell-select,
+      .cell-actions {
+        width: auto;
+      }
+
+      .cell-select,
+      .cell-actions,
+      .issues-table td[data-label='Issue'] {
+        grid-template-columns: minmax(0, 124px) auto;
+      }
+
+      .cell-actions .action-menu-container {
+        justify-self: start;
+      }
+
+      .reason-cell {
+        max-width: none;
+      }
+
+      .action-menu {
+        right: auto;
+        left: 0;
       }
     }
   `]
@@ -638,7 +753,7 @@ export class DashboardPageComponent {
   }
 
   labelsSummary(labels: string[]): string {
-    const filtered = labels.filter((label) => !label.startsWith('rw/')).slice(0, 5);
+    const filtered = labels.filter((label) => !label.startsWith('rw/') && !label.startsWith('type/')).slice(0, 5);
     return filtered.join(', ');
   }
 }
