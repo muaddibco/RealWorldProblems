@@ -114,7 +114,7 @@ If the provider is unavailable or misconfigured, issue listing still works with 
 
 ## Deploy to Azure Static Web Apps
 
-The repo includes `azure.yaml`, `staticwebapp.config.json`, and `infra/main.bicep` so it can be deployed with `azd` or with the Static Web Apps workflow you already use.
+The repo includes `azure.yaml`, `staticwebapp.config.json`, and `infra/main.bicep` so it can be deployed with `azd` with the Angular portal and the `api/` Azure Functions backend in the same Static Web App.
 
 Typical flow:
 
@@ -123,6 +123,28 @@ azd up
 ```
 
 If you use an existing Static Web App resource, point the deployment at the root project and keep the `api/` folder as the Functions backend.
+
+### Deployment scripts
+
+From the repo root:
+
+```bash
+yarn swa:build
+yarn swa:provision
+yarn swa:deploy
+```
+
+One-command flow:
+
+```bash
+yarn swa:up
+```
+
+PowerShell wrapper (supports non-interactive env setup):
+
+```bash
+pwsh -File ./scripts/deploy-swa.ps1 -EnvironmentName dev -Location eastus
+```
 
 ## Notes
 

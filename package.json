@@ -8,9 +8,15 @@
   "scripts": {
     "start": "ng serve --open",
     "build": "ng build",
+    "build:portal": "ng build",
     "api:start": "yarn workspace realworldproblems-portal-api start",
     "api:build": "yarn workspace realworldproblems-portal-api build",
     "api:test": "yarn workspace realworldproblems-portal-api test",
+    "swa:build": "yarn build:portal && yarn api:build",
+    "swa:provision": "azd provision",
+    "swa:deploy": "azd deploy",
+    "swa:up": "azd up",
+    "swa:deploy:script": "pwsh -File ./scripts/deploy-swa.ps1",
     "test": "yarn api:test"
   },
   "dependencies": {

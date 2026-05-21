@@ -1,6 +1,12 @@
 name: realworldproblems-portal
+infra:
+  provider: bicep
+  path: infra
+  module: main
 services:
   web:
     project: ./
     language: js
     host: staticwebapp
+    api: api
+    dist: dist/portal

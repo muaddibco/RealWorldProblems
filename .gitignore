@@ -8,3 +8,4 @@ api/dist/
 coverage/
 api/local.settings.json
 .angular/
+.swa-api-deploy/

@@ -18,6 +18,16 @@ resource staticWebApp 'Microsoft.Web/staticSites@2024-04-01' = {
     name: sku
     tier: sku
   }
+  tags: {
+    'azd-service-name': 'web'
+  }
+  properties: {
+    buildProperties: {
+      appLocation: '/'
+      apiLocation: 'api'
+      outputLocation: 'dist/portal'
+    }
+  }
 }
 
 output staticWebAppDefaultHostname string = staticWebApp.properties.defaultHostname
