@@ -28,14 +28,15 @@ async function getTableClient(): Promise<TableClient> {
   try {
     const connectionString = getConnectionString();
     const tableServiceClient = TableServiceClient.fromConnectionString(connectionString);
+    const client = TableClient.fromConnectionString(connectionString, TABLE_NAME);
     
     // Ensure table exists
     await tableServiceClient.createTable(TABLE_NAME).catch(() => {
       // Table might already exist, ignore error
     });
 
-    tableClient = tableServiceClient.getTableClient(TABLE_NAME);
-    return tableClient;
+    tableClient = client;
+    return client;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to initialize table client: ${message}`);
