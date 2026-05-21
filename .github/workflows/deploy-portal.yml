@@ -51,4 +51,4 @@ jobs:
           api_location: 'api'
           config_file_location: '/'
           skip_app_build: true
-          skip_api_build: true
+          api_build_command: 'npm run build'
