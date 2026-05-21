@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "commonjs",
+  "engines": {
+    "node": "20.x"
+  },
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
