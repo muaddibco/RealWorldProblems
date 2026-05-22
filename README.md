@@ -87,9 +87,10 @@ The portal never directly dispatches a workflow. Retry is server-side only:
 1. Re-read the issue from GitHub.
 2. Fetch Durable status for the issue instance ID `rw:{owner}:{repo}:issue:{issueNumber}`.
 3. Enforce safety rules.
-4. If the issue has `status/orchestration-failed`, remove that label.
-5. Otherwise remove and re-add the current `stage/*` label.
-6. Add an audit comment starting with `[portal] Manual retry requested`.
+4. Remove all `rw/*` labels.
+5. If the issue has `status/orchestration-failed`, remove that label.
+6. Otherwise remove and re-add the current `stage/*` label.
+7. Add an audit comment starting with `[portal] Manual retry requested`.
 
 The backend refuses retry when the issue is terminal, blocked, invalid, too recently retried, or has an active Durable orchestration while `rw/processing` is present.
 

@@ -1,5 +1,5 @@
 import { classifyLifecycleStatus, computeIsStuck, buildIssueCard } from '../github/issueClassification';
-import { evaluateRetryEligibility } from '../github/retryEligibility';
+import { applyRetryStrategyLabels, evaluateRetryEligibility } from '../github/retryEligibility';
 import { STAGE_CONFIG } from '../orchestrator/stageConfig';
 import { DurableHttpOrchestratorStatusProvider } from '../orchestrator/durableHttpOrchestratorStatusProvider';
 import { aggregateBatchRetryResults } from '../services/batchRetryAggregation';
@@ -126,5 +126,25 @@ describe('retry safety and aggregation', () => {
     expect(aggregated.ok).toBe(true);
     expect(aggregated.results).toHaveLength(2);
     expect(aggregated.results[1].message).toContain('closed');
+  });
+
+  it('removes all rw/* labels when reapplying stage label', () => {
+    const action = applyRetryStrategyLabels(
+      ['type/problem', 'stage/3-scored', 'rw/processing', 'rw/cooldown'],
+      'reapplied-stage-label'
+    );
+
+    expect(action.remove).toEqual(expect.arrayContaining(['rw/processing', 'rw/cooldown', 'stage/3-scored']));
+    expect(action.add).toEqual(['stage/3-scored']);
+  });
+
+  it('removes all rw/* labels when clearing orchestration-failed', () => {
+    const action = applyRetryStrategyLabels(
+      ['type/problem', 'stage/3-scored', 'status/orchestration-failed', 'rw/processing', 'rw/cooldown'],
+      'removed-orchestration-failed'
+    );
+
+    expect(action.remove).toEqual(expect.arrayContaining(['rw/processing', 'rw/cooldown', 'status/orchestration-failed']));
+    expect(action.add).toEqual([]);
   });
 });

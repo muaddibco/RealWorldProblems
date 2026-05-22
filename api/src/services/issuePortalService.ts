@@ -10,7 +10,7 @@ import {
   RetryStrategy,
 } from '../types';
 import { asStringArray } from '../shared/http';
-import { buildIssueCard, buildIssueDetails, classifyLifecycleStatus, matchesIssueSearch, summarizeLabels } from '../github/issueClassification';
+import { buildIssueCard, buildIssueDetails, matchesIssueSearch, summarizeLabels } from '../github/issueClassification';
 import { applyRetryStrategyLabels, evaluateRetryEligibility } from '../github/retryEligibility';
 import { getPrimaryStageLabel, getStageLabelsCount, isStageLabel } from '../orchestrator/stageConfig';
 import { aggregateBatchRetryResults } from './batchRetryAggregation';
@@ -235,7 +235,6 @@ export async function retryIssue(issueNumber: number, reason: string, requestedB
   const stageLabel = getPrimaryStageLabel(labels);
   const orchestrationStatus = await getIssueOrchestrationStatus(issue.number, stageLabel);
   const retryEligibility = evaluateRetryEligibility(issue, orchestrationStatus);
-  const lifecycleStatus = classifyLifecycleStatus(labels, issue.state);
 
   if (!retryEligibility.allowed) {
     return { ok: false, issueNumber, message: `Retry refused: ${retryEligibility.reason ?? 'unknown safety rule'}` };
@@ -252,10 +251,6 @@ export async function retryIssue(issueNumber: number, reason: string, requestedB
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { ok: false, issueNumber, message: `Retry refused: ${message}` };
     }
-  }
-
-  if (lifecycleStatus === 'processing' && labels.includes('rw/processing')) {
-    await githubClient.removeLabel(issue.number, 'rw/processing');
   }
 
   const strategy = retryEligibility.strategy ?? 'reapplied-stage-label';

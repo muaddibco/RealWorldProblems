@@ -68,9 +68,14 @@ export function evaluateRetryEligibility(issue: GitHubIssueRecord, orchestration
 
 export function applyRetryStrategyLabels(labels: string[], strategy: RetryStrategy): { remove: string[]; add: string[] } {
   const stageLabel = labels.find((label) => isStageLabel(label)) ?? null;
+  const rwLabels = labels.filter((label) => label.startsWith('rw/'));
   if (strategy === 'removed-orchestration-failed') {
-    return { remove: ['status/orchestration-failed'], add: [] };
+    return { remove: Array.from(new Set([...rwLabels, 'status/orchestration-failed'])), add: [] };
   }
 
-  return stageLabel ? { remove: [stageLabel], add: [stageLabel] } : { remove: [], add: [] };
+  if (!stageLabel) {
+    return { remove: rwLabels, add: [] };
+  }
+
+  return { remove: Array.from(new Set([...rwLabels, stageLabel])), add: [stageLabel] };
 }
