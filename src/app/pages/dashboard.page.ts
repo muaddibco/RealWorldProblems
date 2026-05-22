@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalApiFacade } from '../services/portal-api.facade';
 import { PortalSettingsService } from '../services/portal-settings.service';
 import { BatchRetryResult, IssueCard } from '../types/models';
 
 type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stuck' | 'blocked' | 'orchestration_failed' | 'archived' | 'completed' | 'selected' | 'invalid';
+const POLL_INTERVAL_MS = 10_000;
 
 @Component({
   standalone: true,
@@ -23,14 +24,13 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
               <button class="button" type="button" [class.button-primary]="viewMode() === 'default'" (click)="setViewMode('default')">Default non-terminal</button>
               <button class="button" type="button" [class.button-primary]="viewMode() === 'all'" (click)="setViewMode('all')">All</button>
             </div>
-            <button class="button" type="button" (click)="reload()" [disabled]="loading()">Refresh</button>
             <button class="button button-primary" type="button" (click)="retrySelected()" [disabled]="!hasSelectedRetryable()">Retry selected</button>
             <button class="button button-primary" type="button" (click)="retryAllShown()" [disabled]="!hasShownRetryable()">Retry all shown</button>
             <button class="button button-secondary" type="button" (click)="refreshCache()" [disabled]="isRefreshingCache() || loading()">
               @if (isRefreshingCache()) {
                 <span class="table-spinner" aria-hidden="true"></span>
               }
-              {{ isRefreshingCache() ? 'Refreshing...' : 'Hard refresh' }}
+              {{ isRefreshingCache() ? 'Refreshing...' : 'Hard Refresh' }}
             </button>
           </div>
           <div class="cache-status">
@@ -533,11 +533,13 @@ type DashboardStatusFilter = 'all' | 'active' | 'processing' | 'cooldown' | 'stu
     }
   `]
 })
-export class DashboardPageComponent {
+export class DashboardPageComponent implements OnDestroy {
   private readonly api = inject(PortalApiFacade);
   readonly settings = inject(PortalSettingsService);
   private lastLoadErrorPopupMessage: string | null = null;
   private lastSuccessfulIssues: IssueCard[] = [];
+  private pollHandle: ReturnType<typeof setInterval> | null = null;
+  private pollInFlight = false;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -634,6 +636,11 @@ export class DashboardPageComponent {
 
   constructor() {
     void this.reload();
+    this.startPolling();
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
   }
 
   @HostListener('document:click')
@@ -657,60 +664,111 @@ export class DashboardPageComponent {
   }
 
   async reload(): Promise<void> {
-    this.loading.set(true);
+    await this.loadIssues({ showLoading: true, clearSelection: true, probeHealth: true });
+  }
+
+  private startPolling(): void {
+    if (this.pollHandle) {
+      return;
+    }
+
+    this.pollHandle = setInterval(() => {
+      void this.pollIssues();
+    }, POLL_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (!this.pollHandle) {
+      return;
+    }
+
+    clearInterval(this.pollHandle);
+    this.pollHandle = null;
+  }
+
+  private async pollIssues(): Promise<void> {
+    if (this.pollInFlight || this.isRefreshingCache()) {
+      return;
+    }
+
+    this.pollInFlight = true;
+    try {
+      await this.loadIssues({ showLoading: false, clearSelection: false, probeHealth: false, suppressErrorPopup: true });
+    } finally {
+      this.pollInFlight = false;
+    }
+  }
+
+  private async loadIssues(options: { showLoading: boolean; clearSelection: boolean; probeHealth: boolean; suppressErrorPopup?: boolean }): Promise<void> {
+    if (options.showLoading) {
+      this.loading.set(true);
+    }
     this.error.set(null);
     try {
-      await this.api.getHealth();
+      if (options.probeHealth) {
+        await this.api.getHealth();
+      }
+
       const response = await this.api.listIssues({
         defaultView: this.viewMode() === 'default',
         status: this.statusFilter(),
         orchestrationStatus: this.orchestrationFilter(),
         stage: this.stageFilter(),
         q: this.search(),
-        limit: 250
+        limit: 250,
+        refresh: false
       });
       this.issues.set(response.issues);
       this.lastSuccessfulIssues = response.issues;
-      this.selectedIssueNumbers.set(new Set());
+      if (options.clearSelection) {
+        this.selectedIssueNumbers.set(new Set());
+      }
       this.lastLoadErrorPopupMessage = null;
-        this.cacheSource.set(response.cacheInfo?.source ?? 'cache');
-        this.cacheTimestamp.set(response.cacheInfo?.timestamp ?? Date.now());
+      this.cacheSource.set(response.cacheInfo?.source ?? 'cache');
+      this.cacheTimestamp.set(response.cacheInfo?.timestamp ?? Date.now());
     } catch (error) {
       const details = (error as { error?: { details?: string } } | null)?.error?.details;
       const message = details ?? (error instanceof Error ? error.message : 'Failed to load issues');
       this.error.set(message);
       this.issues.set(this.lastSuccessfulIssues);
+      if (!options.suppressErrorPopup && this.lastLoadErrorPopupMessage !== message) {
+        this.lastLoadErrorPopupMessage = message;
+        window.alert(message);
+      }
+    } finally {
+      if (options.showLoading) {
+        this.loading.set(false);
+      }
+    }
+  }
+
+  async refreshCache(): Promise<void> {
+    const confirmed = window.confirm('Hard refresh will bypass Azure Table cache and reload issues from GitHub. Continue?');
+    if (!confirmed) {
+      return;
+    }
+
+    this.isRefreshingCache.set(true);
+    this.error.set(null);
+    try {
+      const response = await this.api.refreshCache();
+      this.issues.set(response.issues);
+      this.lastSuccessfulIssues = response.issues;
+      this.selectedIssueNumbers.set(new Set());
+      this.cacheSource.set('github');
+      this.cacheTimestamp.set(Date.now());
+      this.lastLoadErrorPopupMessage = null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to refresh cache';
+      this.error.set(message);
       if (this.lastLoadErrorPopupMessage !== message) {
         this.lastLoadErrorPopupMessage = message;
         window.alert(message);
       }
     } finally {
-      this.loading.set(false);
+      this.isRefreshingCache.set(false);
     }
   }
-
-    async refreshCache(): Promise<void> {
-      this.isRefreshingCache.set(true);
-      this.error.set(null);
-      try {
-        const response = await this.api.refreshCache();
-        this.issues.set(response.issues);
-        this.lastSuccessfulIssues = response.issues;
-        this.selectedIssueNumbers.set(new Set());
-        this.cacheSource.set('github');
-        this.cacheTimestamp.set(Date.now());
-        this.lastLoadErrorPopupMessage = null;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to refresh cache';
-        this.error.set(message);
-        if (this.lastLoadErrorPopupMessage !== message) {
-          this.lastLoadErrorPopupMessage = message;
-          window.alert(message);
-        }
-      } finally {
-        this.isRefreshingCache.set(false);
-      }
-    }
 
   setStatusFilter(value: string): void {
     this.statusFilter.set(value as DashboardStatusFilter);
