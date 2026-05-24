@@ -36,6 +36,7 @@ tools:
   github:
     toolsets: [issues]
     read-only: true
+    min-integrity: none
 
 safe-outputs:
   staged: false
@@ -53,168 +54,369 @@ safe-outputs:
     max: 1
   add-labels:
     blocked: ["~*", "*[bot]"]
+    target: "*"
     max: 10
   remove-labels:
     blocked: ["~*"]
-    max: 10
-  close-issue:
     target: "*"
-    max: 1
+    max: 10
   noop:
 ---
 
-# Create a validation plan focused on the next highest-value uncertainty
+# Create one geographically scoped validation experiment
 
-## Dispatch context
+## Purpose
+
+Turn a shortlisted `wedge/credible` opportunity into one runnable validation experiment for the most decision-critical remaining uncertainty.
+
+The experiment must remain inside the validated initial wedge scope. It must not silently broaden:
+
+- a verified country into the full geographical discovery area;
+- a regional opportunity into untested countries or segments;
+- a globally-portable hypothesis into proof of global demand.
+
+This stage creates a plan and a child experiment issue; it does not create validation results or upgrade the evidence status to `primary-validated`.
+
+Expected transition:
+
+```text
+stage/7-validation → stage/7.1-validated
+```
+
+---
+
+## Dispatch context and eligibility
 
 - Target issue: #${{ inputs.issue_number }}
 - Orchestration ID: `${{ inputs.orchestration_id }}`
 
 Before doing anything else:
+
 - Read issue #${{ inputs.issue_number }} using GitHub MCP issue tools.
-- Operate ONLY if issue #${{ inputs.issue_number }} has labels `type/problem`, `stage/7-validation`, and `wedge/credible`, and does NOT have labels `agentic-workflows` or `stage/9-archived`.
-- Otherwise `noop`.
+- Operate ONLY on issue #${{ inputs.issue_number }} for parent writes.
+- Proceed only when the issue has `type/problem`, `stage/7-validation`, and `wedge/credible`.
+- Do not process when `agentic-workflows` or `stage/9-archived` is present.
+- If eligibility fails, emit `noop` and stop.
+- If more than one `stage/*` label is active, add `status/needs-info`, comment with the conflicting stages, and stop.
 
-## Mandatory completion rule
+---
 
-A successful run MUST end with at least one safe-output tool call.
+## Tooling and completion rules
 
-Valid endings are only:
-- `update_issue` plus any needed `add_labels` / `remove_labels`
-- `add_comment` plus `add_labels` when info is missing
-- `noop` when the issue should not be processed
+- Read issues using GitHub MCP issue tools only.
+- Do NOT use `gh`, `curl`, shell scraping, `python -c`, temp-file parsing, reconstructed tool payloads, or external web research.
+- Use only upstream islands and explicit issue content as the source of truth.
+- If GitHub issue reads are unavailable, emit `noop` with reason `missing GitHub read tools`.
 
-When the validation plan is created successfully, the run must include label updates that remove `stage/7-validation` and add `stage/7.1-validated`.
+A successful runnable plan MUST include:
 
-Do not end with prose-only output.
-Do not stop after analysis.
-A run with no safe-output tool call is invalid.
+1. `create_issue` for one `type/experiment` child issue;
+2. `update_issue` for the parent `rw:validation` island;
+3. `add_labels` on the parent for `stage/7.1-validated`;
+4. `remove_labels` on the parent for `stage/7-validation`.
 
-## Mandatory write targeting rule
+If blocked:
 
-Because this workflow runs via `workflow_dispatch`, there is no implicit triggering issue.
+- call `add_comment` identifying exact prerequisites missing or unsafe;
+- call `add_labels` for `status/needs-info`;
+- retain `stage/7-validation`;
+- create no experiment and write no validation island.
 
-For every write action, always target:
+For every parent write, explicitly target:
+
 - `repo: ${{ github.repository }}`
 - `issue_number: ${{ inputs.issue_number }}` for `update_issue`
-- `item_number: ${{ inputs.issue_number }}` for `add_comment`
-- `item_number: ${{ inputs.issue_number }}` for `add_labels`
-- `item_number: ${{ inputs.issue_number }}` for `remove_labels`
+- `item_number: ${{ inputs.issue_number }}` for comments and labels.
 
-Never rely on implicit targeting.
+The child experiment body must reference parent issue #${{ inputs.issue_number }}. Record the created issue reference in the parent island only when the safe-output tool returns it; never invent an issue number.
 
-## What this stage is for
-This stage should turn a validation-ready problem into a **practical next experiment**.
+---
 
-It should align with the updated pipeline logic:
-- stage 3 scored **problem attractiveness**
-- stage 6 decided the **market-entry wedge**
-- stage 7 should test the **most decision-critical remaining assumption** before more build or go-to-market work
+## Required upstream handoff
 
-Do **not** produce a generic plan that tries to validate everything at once.
-Choose the single highest-value uncertainty, or at most two closely related uncertainties.
+Require completed canonical islands:
 
-## Preconditions
-Expected inputs before planning:
-- scorecard island present (`<!-- rw:scorecard:start -->` or `<!-- gh-aw-island-start:30-scorer -->`)
-- wedge island present (`<!-- rw:wedge:start -->` or `<!-- gh-aw-island-start:70-wedge-filter -->`)
-- solution island present (`<!-- rw:solution:start -->` or `<!-- gh-aw-island-start:40-solution -->`)
+1. `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+2. `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+3. `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+4. `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+5. `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+6. `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+7. `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+8. `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
+9. `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
+10. `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->` only when a country-dependent issue required the pre-scoring gate.
 
-Accept either the canonical `rw:*` marker format or the `gh-aw-island-start:*` format — both are valid.
+Legacy marker alternatives are not sufficient for the revised geographical-area-aware pipeline.
 
-Competitors island is helpful context and should usually exist by this stage, but the plan may still proceed if the scorecard, solution, and wedge are all present and sufficiently specific.
+### Required values
 
-If any required island is clearly missing (neither format is present):
-- add one short comment explaining what is missing
-- add label: status/needs-info
-- stop
+Require:
 
-Tooling note:
-- Read/search issues using GitHub MCP issue tools (issue_read/list_issues/search_issues).
-- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `noop` with a short reason and stop.
+- Evidence status `secondary-signalled` or `primary-validated`, plus evidence confidence.
+- JTBD, affected persona, failure moment, workaround, likely payer/economic beneficiary, and next validation-critical unknown.
+- `Geographic area: <area>`.
+- `Geographic applicability: globally-portable|regional|country-dependent`.
+- `Scoring geographic scope: <area or verified country/countries>`.
+- `Validated initial product scope: <area or verified country/countries>`.
+- `Validated initial wedge scope: <area or verified country/countries>`.
+- `Country-validation gate used: not-required|satisfied-upstream|satisfied-by-country-validation`.
+- A statement of what must not be generalized beyond validated scope.
+- Dedupe disposition `not-duplicate|regional-variant|possible-near-duplicate`.
+- Software-fit decision `yes|partial`.
+- Complete scorecard, solution, and AI-defensibility result.
+- Competitor status `complete-for-wedge-review|material-competition-warning`.
+- Wedge decision `credible`, initial ICP/buyer, distribution path, differentiation hypothesis, fastest falsifiable test, and kill criterion.
 
-## Planning logic
-Use the scorecard and wedge islands as the source of truth.
+The wedge scope may be narrower than scoring scope; it must not be broader.
 
-Prioritize the experiment around the weakest decision-critical assumption, especially when one of these is uncertain:
-- willingness-to-pay
-- reachability / ability to access the initial ICP
-- wedge adoption / whether the narrow entry angle is compelling
-- feasibility of the MVP delivering value in the target workflow
-- urgency / failure cost being strong enough to trigger action now
+For a `country-dependent` candidate previously routed through validation:
 
-### Method selection guidance
-Prefer methods based on confidence, evidence, and the type of uncertainty:
-- If **Evidence** is weak or **Confidence** is low, prefer **interviews** or a **concierge MVP** first.
-- If willingness-to-pay is the main open question, prefer **paid pilot**, pricing conversations, or a **landing page + waitlist** with a concrete offer.
-- If reachability / channel is the main open question, prefer **landing page + waitlist** or direct outreach tests tied to the wedge ICP.
-- If workflow fit is the main open question, prefer **concierge MVP** or structured interviews around the trigger moment and current workaround.
-- If feasibility is the main open question, define a small technical proof or fake-door test that validates whether users would adopt the MVP behavior.
+- require `rw:country-validation` with `Gate status: satisfied`;
+- use only its verified country scope in recruitment, local workflow, currency/language, alternatives, and interpretation.
 
-Do **not** recommend a paid pilot when the issue still lacks a credible ICP, recruiter path, or concrete value proposition.
+---
 
-## Write the validation plan into the parent issue
+## Blocking conditions
 
+Do not plan or create an experiment when:
+
+- a required island/value is missing or contradictory;
+- country validation is unresolved;
+- scoring, product, and wedge scopes conflict;
+- the wedge is weak, archived, or lacks a concrete recruitment path;
+- competitor research is `needs-verification`;
+- an essential MVP dependency is unverified and is neither avoided nor safely tested;
+- no unambiguous pass/fail test can be defined;
+- unnecessary sensitive data would be collected;
+- an existing linked experiment already tests the same hypothesis without justification for another.
+
+When blocked, add `status/needs-info`, add one precise comment, retain the stage, and do not create/update experiment content.
+
+---
+
+## Source-of-truth precedence
+
+Use:
+
+1. `rw:country-validation`, when present, for verified country scope and non-generalization boundaries.
+2. `rw:wedge` for the credible entry path and falsification target.
+3. `rw:competitors` for strongest alternatives and differentiation uncertainty.
+4. `rw:ai-defensibility` for generic-AI substitution risk.
+5. `rw:solution` for MVP and dependency choices.
+6. `rw:scorecard` for evidence, confidence, risk, and remaining assumption.
+7. Earlier islands for problem identity and historical constraints.
+
+Do not rewrite prior islands.
+
+---
+
+## Choose one primary uncertainty
+
+Select exactly one:
+
+- `willingness-to-pay`
+- `reachability/channel`
+- `wedge adoption/differentiation`
+- `workflow fit/problem truth`
+- `MVP feasibility dependency`
+- `AI/generic-tool substitution resistance`
+
+A secondary uncertainty is allowed only if the same method tests it without weakening pass/fail clarity.
+
+Choose the uncertainty most likely to reverse the next continue/stop decision and testable inside the validated wedge scope.
+
+Special rules:
+
+- For `regional-variant`, test whether the documented regional difference actually changes adoption, access, or differentiation when this remains uncertain.
+- When AI defensibility is weak or AI risk is high, include an AI-substitution benchmark if generic AI plus current tools could invalidate the wedge.
+
+---
+
+## Geographic experiment rules
+
+### `globally-portable`
+
+Recruit and test within the concrete initial area/segment named by the wedge. State what requires retesting before expansion; do not claim cross-area portability from this test.
+
+### `regional`
+
+Recruit in the selected geographical area and test its area-specific mechanism or route. Reflect relevant language, currency, workflow, and alternatives where material. State country/subsegment limits on interpretation.
+
+### `country-dependent`
+
+Recruit only in verified country scope. Use verified local mechanisms and relevant language/currency/alternatives. Do not generalize to other countries or the full discovery area.
+
+### `regional-variant`
+
+Test the distinction that justified keeping the variant separate, not only the broad pain shared by its cluster.
+
+---
+
+## Method guidance
+
+Use one primary method and optionally one tightly coupled secondary method:
+
+- **Interviews** for problem truth, workflow, buyer, urgency, or local distinction.
+- **Concierge MVP** for testing workflow adoption before software build.
+- **Landing page + waitlist / qualified lead test** for scoped channel or offer resonance.
+- **Pricing conversation / paid pilot** only when buyer, feasible first value, and recruitment path are credible.
+- **Technical/operational proof or fake-door test** for a critical dependency or behavior.
+- **AI substitution benchmark** when the wedge must show value beyond generic AI plus existing tools.
+
+A runnable plan must specify participant scope, recruitment route, method target volume, pass/fail threshold, privacy safeguards, and scope limitations.
+
+---
+
+## Parent validation island output
+
+Write only inside:
+
+`<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
+
+Use this exact structure:
+
+```md
 <!-- rw:validation:start -->
 ### Validation goal
-- Primary uncertainty: ...
-- Why this is the next thing to test now: ...
+- **Primary uncertainty:** willingness-to-pay | reachability/channel | wedge adoption/differentiation | workflow fit/problem truth | MVP feasibility dependency | AI/generic-tool substitution resistance
+- **Secondary uncertainty, if tightly coupled:** <uncertainty or none>
+- **Why this is the next decision-critical test:** ...
+
+### Validated geographic experiment scope
+- **Geographic area:** <area>
+- **Geographic applicability:** globally-portable | regional | country-dependent
+- **Validated initial wedge scope for this test:** <area or verified country/countries>
+- **Country-validation gate used:** not-required | satisfied-upstream | satisfied-by-country-validation
+- **Participant/customer location requirement:** ...
+- **Language / currency / local workflow considerations:** ...
+- **Local competitors/substitutes to include in test framing:** ...
+- **What must not be generalized beyond this scope:** ...
 
 ### Hypothesis
-...
+- **We believe:** ...
+- **Because upstream evidence suggests:** ...
+- **This would be falsified if:** ...
 
-### Method (choose 1 primary, optional 1 secondary)
-- ...
+### Experiment design
+- **Primary method:** interviews | concierge MVP | landing page + waitlist | pricing conversation | paid pilot | technical/operational proof | fake-door test | AI substitution benchmark
+- **Optional coupled method:** <method or none>
+- **Offer or workflow being tested:** ...
+- **MVP / artifact needed:** ...
+- **Essential dependency treatment:** verified | deliberately avoided | directly tested — ...
 
 ### Target participant / customer
-- ...
+- **ICP / buyer:** ...
+- **Eligibility criteria:** ...
+- **Exclusion criteria / sensitive-data limits:** ...
+- **Target sample or outreach volume:** ...
 
 ### Recruiting path
-- ...
+- **Channel in validated scope:** ...
+- **Recruitment message/value proposition:** ...
+- **Why this route is feasible here:** ...
 
 ### Success criteria (pass/fail)
-- ...
+| Metric / observation | Pass threshold | Fail / kill threshold | Why it changes the decision |
+|---|---|---|---|
+| ... | ... | ... | ... |
 
 ### Evidence to collect
 - ...
+- **Privacy / sensitivity safeguards:** ...
 
-### Interview questions or test script (optional)
-- ...
+### Test script or execution steps
+1. ...
+2. ...
+3. ...
 
 ### Next action if PASS / if FAIL
-- PASS: ...
-- FAIL: ...
+- **PASS:** ...
+- **FAIL:** ...
+- **INCONCLUSIVE:** ...
 
-### Planning notes
-- Scorecard signals used: confidence=..., evidence=..., risk=...
-- Wedge assumption being tested: ...
-- Experiment issue: #<new id> (if created)
+### Planning traceability
+- **Scorecard signals used:** evidence=..., confidence=..., risk=...
+- **Wedge assumption being tested:** ...
+- **Strongest competitor/substitute considered:** ...
+- **AI-defensibility risk addressed:** ...
+- **Experiment issue:** #<created issue number if returned by tool; never invent>
 <!-- rw:validation:end -->
+```
+
+---
 
 ## Child experiment issue
-Create one `type/experiment` child issue when the plan is concrete enough to run.
 
-Issue requirements:
-- Title: `[experiment] <short problem name> - <primary uncertainty>`
-- Body should mirror the parent validation island in compact form
-- Include:
-  - parent problem link/reference
-  - primary uncertainty
-  - hypothesis
-  - method
-  - recruiting path
-  - success criteria
-  - pass/fail next action
+For a successful plan create exactly one `type/experiment` issue.
 
-If an experiment issue is created, add its reference in the parent validation island.
+Title remainder after `[experiment]`:
 
-## Label handling
-If the validation plan is created successfully:
-- optionally remove `status/needs-info` if the issue is now sufficiently complete
-- remove `stage/7-validation`
-- add `stage/7.1-validated`
+`<short opportunity name> - <primary uncertainty> - <scoped geography>`
 
-This stage marks validation planning as completed for the issue.
+Body:
 
-Always emit safe outputs or noop.
+```md
+## Parent problem
+- Parent issue: #${{ inputs.issue_number }}
+- Parent stage at creation: stage/7-validation
+- Geographic area: <area>
+- Geographic applicability: globally-portable | regional | country-dependent
+- Validated experiment scope: <area or verified country/countries>
+
+## Decision to resolve
+- Primary uncertainty: ...
+- Hypothesis: ...
+- Kill criterion: ...
+
+## Method and execution
+- Method: ...
+- Offer/workflow tested: ...
+- Participant/customer criteria: ...
+- Recruiting path: ...
+- Target sample/outreach volume: ...
+- Language/currency/local workflow considerations: ...
+- Sensitive-data safeguards: ...
+
+## Success criteria
+| Metric / observation | Pass threshold | Fail threshold |
+|---|---|---|
+| ... | ... | ... |
+
+## Results capture
+- Status: not-started
+- Findings: pending
+- Decision: pending
+
+## Next action
+- If pass: ...
+- If fail: ...
+- If inconclusive: ...
+```
+
+The child issue is an execution plan, not evidence that the hypothesis is true.
+
+---
+
+## Advance after success
+
+When a runnable plan and experiment issue are created:
+
+1. Call `create_issue` for the child.
+2. Call `update_issue` on the parent with `operation: replace-island` and only the complete `rw:validation` island.
+3. Call `add_labels` on the parent for `stage/7.1-validated`.
+4. Call `remove_labels` on the parent for `stage/7-validation` and for `status/needs-info` only if no visible blocker remains.
+
+Do not remove `wedge/credible` or `status/shortlisted`. Do not add undeclared geography or evidence-result labels.
+
+---
+
+## Integrity principles
+
+- Plan one experiment that can change a decision.
+- Stay inside validated geographic scope.
+- A validation plan is not validation evidence until executed.
+- Test against meaningful alternatives and AI substitution risk where material.
+- Prefer a sharp, inexpensive falsification test over a broad research programme.
+
+Always emit at least one safe-output operation, or `noop`.

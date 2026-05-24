@@ -8,6 +8,11 @@ on:
         description: "How many eligible issues to process in this run (1-25)"
         required: true
         default: "10"
+        type: string
+
+concurrency:
+  group: rw-marketing-sales-${{ github.repository }}
+  cancel-in-progress: false
 
 engine:
   id: copilot
@@ -29,15 +34,16 @@ network:
 mcp-servers:
   tavily:
     command: npx
-    args: ["-y", "@tavily/mcp-server"]
+    args: ["-y", "tavily-mcp"]
     env:
       TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
-    allowed: ["search", "search_news"]
+    allowed: ["tavily_search", "tavily_research", "tavily_extract"]
 
 tools:
   github:
     toolsets: [issues]
     read-only: true
+    min-integrity: none
   web-fetch:
 
 safe-outputs:
@@ -58,210 +64,386 @@ safe-outputs:
   noop:
 ---
 
-# Marketing & Sales Complexity (manual batch assessment)
+# Marketing & Sales Complexity: assess commercial motion in validated geographic scope
 
-This workflow is manual-only.
+## Purpose
 
-## Operate ONLY on issues that:
-- have label `type/problem`
-- have label `stage/7.1-validated`
-- have label `wedge/credible`
-- have one of: `score/top-10`, `score/top-50`
-- have one of: `risk/low`, `risk/medium`
-- have one of: `ai-defensibility/medium`, `ai-defensibility/strong`
-- have one of: `ai-risk/low`, `ai-risk/medium`
-- do NOT have label `agentic-workflows`
-- do NOT have any `marketing-sales/*` label
+This manual batch workflow estimates the difficulty of acquiring, activating and selling to initial customers for a shortlisted opportunity **within its validated initial wedge scope**.
+
+It is an orthogonal commercial assessment. It does not advance pipeline stage, change a wedge decision, select a startup or imply that a planned validation experiment has already produced results.
+
+The workflow must respect the revised geography model:
+
+- `globally-portable` opportunities still require a specific initial commercial scope;
+- `regional` opportunities may have area-specific channels, trust, language, payment or buyer constraints;
+- `country-dependent` opportunities may be assessed only within verified country scope;
+- `regional-variant` opportunities must have a commercially meaningful regional distinction rather than only a different area label.
+
+The completed `rw:marketing-sales` island is a required comparative input for `95-startup-selector.md`.
+
+---
+
+## Tooling and completion rules
+
+- Read/search issues using GitHub MCP issue tools only.
+- Do NOT use `gh`, `curl`, shell scraping, `python -c`, local temp-file parsing, reconstructed tool payloads or workflow-output files.
+- Use Tavily search/news and `web-fetch` only for bounded checks of market-facing commercial facts in the validated scope.
+- Prefer official product, association, marketplace, channel, procurement or buyer-facing sources.
+- Search relevant local/regional languages when a scoped acquisition or sales path materially depends on them and it is practical.
+- Do not infer easy sales, reachable buyers, market whitespace or willingness to pay from thin searches.
+- If GitHub reads are unavailable, emit `noop` with reason `missing GitHub read tools`.
+
+A run ends with:
+
+- safe-output island updates plus labels and one report for completed assessments; or
+- a report recording blocked/incomplete commercial assessment when such issues were inspected; or
+- `noop` when there are no eligible unassessed items.
+
+---
+
+## No-stage-change rule
+
+This workflow may:
+
+- replace only `<!-- rw:marketing-sales:start --> ... <!-- rw:marketing-sales:end -->`;
+- add exactly one `marketing-sales/*` label when an assessment is complete;
+- create one report issue.
+
+It must NOT:
+
+- add or remove any `stage/*` label;
+- alter `status/shortlisted`;
+- archive or close a candidate;
+- change score, risk, wedge, software-fit, AI-defensibility or country-validation labels;
+- rewrite another workflow's island.
+
+---
+
+## Batch limit and deterministic discovery
 
 Process up to `${{ inputs.limit }}` eligible issues.
 
-If `${{ inputs.limit }}` is not a valid positive integer, emit noop.
-If `${{ inputs.limit }}` is greater than 25, treat it as 25.
+- If the input is not a positive integer, emit `noop`.
+- If it exceeds 25, cap it at 25.
 
-Tooling note:
-- Read/search issues using GitHub MCP issue tools (`issue_read`, `list_issues`, `search_issues`).
-- Do NOT use `gh` CLI or `curl` for issue reads in this workflow.
-- If GitHub read tools are unavailable in the model tool list, emit `missing_tool` once and stop.
-- If web-search/web-fetch are missing, do a best-effort assessment and clearly mark unverified assumptions.
+### Broad discovery query
 
-## Candidate discovery — MUST be paginated and deterministic
+Discover open issues with:
 
-You MUST NOT assume that one search result batch is complete.
+- `type/problem`;
+- `status/shortlisted`;
+- `stage/7.1-validated`;
+- `wedge/credible`;
+- no `agentic-workflows`;
+- no `status/needs-info`;
+- no `stage/9-archived`;
+- no existing `marketing-sales/*` label.
 
-You MUST continue discovery until one of these is true:
-1. you have collected at least `${{ inputs.limit }}` eligible issues, OR
-2. the search space is exhausted, OR
-3. you can prove discovery is incomplete because runtime tooling does not support reliable continuation.
+Use:
 
-Do NOT stop after the first batch merely because the current batch has fewer than `${{ inputs.limit }}` eligible issues.
+`repo:<OWNER>/<REPO> is:issue is:open label:"type/problem" label:"status/shortlisted" label:"stage/7.1-validated" label:"wedge/credible" -label:"agentic-workflows" -label:"status/needs-info" -label:"stage/9-archived" -label:"marketing-sales/very-easy" -label:"marketing-sales/easy" -label:"marketing-sales/medium" -label:"marketing-sales/hard" -label:"marketing-sales/very-hard"`
 
-### Base query
-Use this broad base query for discovery:
+### Do not pre-filter away commercial difficulty
 
-`repo:<OWNER>/<REPO> is:issue is:open label:"type/problem" label:"stage/7.1-validated" label:"wedge/credible" -label:"agentic-workflows" -label:"marketing-sales/very-easy" -label:"marketing-sales/easy" -label:"marketing-sales/medium" -label:"marketing-sales/hard" -label:"marketing-sales/very-hard"`
+Do **not** exclude candidates merely because they carry:
 
-### Exact eligibility filter
-A candidate is eligible only if ALL are true:
-- `score/top-10` OR `score/top-50`
-- `risk/low` OR `risk/medium`
-- `ai-defensibility/medium` OR `ai-defensibility/strong`
-- `ai-risk/low` OR `ai-risk/medium`
+- `risk/high`;
+- `ai-defensibility/weak`;
+- `ai-risk/high`.
 
-### Deterministic discovery procedure
+Marketing/sales difficulty is itself a final-comparison input. High risk or weak AI durability should be read and reflected in the assessment, not prevent that assessment from being produced.
 
-Maintain these sets / counters:
-- `seen_issue_ids`
-- `eligible_issue_ids`
-- `eligible_issues`
-- `discovery_complete = false`
+### Pagination
 
-#### Preferred method: explicit page pagination
-If the runtime supports paging for search/list operations, use it.
+Do not assume a first search batch is complete.
 
-1. Fetch page 1 with `perPage: 50`.
-2. Add newly seen issue IDs to `seen_issue_ids`.
-3. Filter results locally using the exact eligibility filter.
-4. Add newly eligible issues to `eligible_issues`.
-5. If eligible count is still below limit, fetch page 2, then page 3, etc.
-6. Stop only when:
-   - eligible count reaches limit, OR
-   - a page returns 0 items, OR
-   - a page returns fewer than `perPage` items and therefore the result set is exhausted.
+Maintain:
 
-Set `discovery_complete = true` if the result set is exhausted or limit has been reached through a reliable paginated scan.
+- `seen_issue_ids`;
+- `eligible_issue_ids`;
+- `discovery_complete`.
 
-#### Fallback method: deterministic created-date window discovery
-If explicit page pagination is NOT available, use date-window partitioning and DO NOT silently settle for one batch.
+When paging exists:
 
-1. Start with a broad window covering all plausible issue creation dates.
-2. Search the base query plus a `created:` range constraint for that window.
-3. If the returned batch is safely below truncation risk, accept the unseen results from that window.
-4. If the returned batch may be truncated, split the window into two smaller non-overlapping windows and search both windows, newest first.
-5. Continue splitting until:
-   - the accepted windows are all below truncation risk, OR
-   - enough eligible issues have been collected, OR
-   - the window cannot be subdivided further in a reliable way.
+1. Read pages deterministically, preferably 50 issues per page.
+2. Deduplicate by issue number.
+3. Read issue bodies and apply the eligibility gate below.
+4. Continue until the processing limit is met or search results are exhausted.
 
-You MUST deduplicate by issue number across windows.
+When paging is unavailable:
 
-Set `discovery_complete = true` only if the full search space has been covered reliably or enough eligible issues were collected through reliable discovery.
+1. Search deterministic non-overlapping created-date windows.
+2. Split windows at truncation risk.
+3. Deduplicate across windows.
+4. Continue until enough candidates are found, the search space is exhausted or reliable continuation is impossible.
 
-#### If reliable continuation is impossible
-If the runtime does not support reliable paging or reliable deterministic windowing:
-- do NOT silently proceed as if discovery were complete;
-- process only if you can clearly mark discovery as incomplete in the report;
-- if even that would be misleading, emit noop.
+If discovery cannot be reliably completed:
 
-## Ranking and take set
+- state `Discovery complete: no` in the report;
+- process only fully verified eligible items where not misleading.
 
-After discovery:
-1. Rank all unique eligible issues in this exact order:
-   - `score/top-10` before `score/top-50`
-   - `risk/low` before `risk/medium`
-   - lower issue number first
+---
 
-2. Take the first `${{ inputs.limit }}` eligible issues from that ranked list.
+## Exact eligibility gate
 
-Definitions:
-- `candidate issues found` = total number of unique eligible issues discovered before truncating to the limit
-- `issues taken for processing` = min(candidate issues found, limit)
-- `issues successfully processed` = issues where both the island update and the complexity label were applied successfully
+Before commercial assessment, require these completed canonical islands:
 
-If there are no eligible issues, emit noop.
+- `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+- `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+- `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+- `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
+- `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
+- `<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
 
-## Per-issue task
+For a country-dependent route resolved through the conditional gate, also require:
 
-Estimate how difficult it will be to market and sell the likely product implied by the problem and the current issue context.
+- `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`;
+- `Gate status: satisfied`.
 
-Use available issue content, especially:
-- normalized problem
-- scorecard
-- solution hypothesis
-- competitor scan
-- wedge decision
-- validation plan
-- AI defensibility / AI risk labels already present
+Require consistent fields:
 
-When helpful, use Tavily/web search to sanity-check:
-- likely acquisition channels
-- buyer type
-- sales motion
-- category crowding
-- whether similar products are typically self-serve, PLG, sales-assisted, or enterprise-led
+From `rw:scorecard`:
 
-## Write into marketing-sales island
+- `Geographic area`;
+- `Geographic applicability: globally-portable|regional|country-dependent`;
+- `Scoring geographic scope`;
+- `Country-validation gate: not-required|satisfied-upstream|satisfied-by-country-validation`;
+- `Dedupe/variant status: not-duplicate|regional-variant|possible-near-duplicate`;
+- evidence, confidence and risk.
 
-For each processed issue, update only:
+From `rw:solution`:
 
+- `Validated initial product scope`;
+- initial user/buyer and payer/economic-beneficiary assumption;
+- dependencies and assumptions.
+
+From `rw:competitors`:
+
+- `Research status: complete-for-wedge-review|material-competition-warning`;
+- scoped competitor/substitute information;
+- strongest remaining threat.
+
+From `rw:wedge`:
+
+- `Decision: credible`;
+- `Validated initial wedge scope`;
+- initial ICP/buyer and first distribution path;
+- scope limitation.
+
+From `rw:validation`:
+
+- validated geographic experiment scope;
+- participant/customer location;
+- recruiting path and pass/fail criteria.
+
+Assess only when:
+
+- validated wedge/commercial scope is equal to or narrower than the scored/product/country-verified scope;
+- no country-validation gate remains outstanding;
+- a country-dependent item stays within verified country scope;
+- a regional item retains its area-specific adoption or distribution factor;
+- a globally-portable item has a defined initial commercial scope;
+- a regional-variant item states the commercial distinction being assessed.
+
+When these requirements fail:
+
+- do not add a marketing-sales complexity label;
+- optionally write `Assessment status: needs-verification`;
+- report the blocked assessment.
+
+---
+
+## Source-of-truth precedence
+
+Use:
+
+1. `rw:validation` for planned participant/customer scope and recruiting path.
+2. `rw:wedge` for the validated entry route and adoption factor.
+3. `rw:competitors` for alternatives and competitive acquisition friction.
+4. `rw:solution` for product, buyer, onboarding and dependencies.
+5. `rw:ai-defensibility` for generic-AI/local-substitute selling risk.
+6. `rw:scorecard` for scope, payer framing, evidence/confidence and risk.
+7. `rw:country-validation`, when required, for verified country boundaries.
+
+External research may sanity-check commercial motion only; it must not rewrite upstream scope.
+
+---
+
+## Geographic research scope
+
+### `globally-portable`
+
+Assess the declared initial geography/segment only. Record what commercial assumptions require re-checking before expansion.
+
+### `regional`
+
+Assess the supported area-specific commercial factor, such as language, payments, trust, local channels, provider structure or substitutes. Do not convert single-country evidence into area-wide commercial ease.
+
+### `country-dependent`
+
+Assess only the verified country scope. Do not use unchecked geographic expansion to improve the complexity verdict.
+
+### `regional-variant`
+
+Assess whether the geographic distinction creates a different reachable buyer/channel, trust position or sales friction compared with the shared cluster.
+
+---
+
+## Complexity classification
+
+Assign exactly one label only for a complete assessment:
+
+- `marketing-sales/very-easy`
+- `marketing-sales/easy`
+- `marketing-sales/medium`
+- `marketing-sales/hard`
+- `marketing-sales/very-hard`
+
+Calibration:
+
+- **very easy:** supported self-serve/referral path, individual adoption, minimal trust/procurement/onboarding friction.
+- **easy:** mostly self-serve or light-touch founder support with a credible low-friction channel.
+- **medium:** targeted acquisition and education/trust work required, but plausible for a small team.
+- **hard:** sales assistance, demos/onboarding, integration, compliance, institutional trust or multi-stakeholder approval is material.
+- **very hard:** long/expensive institutional, public-sector or enterprise motion; mandatory partners/procurement or specialist sales dominates.
+
+When uncertain between adjacent levels, choose the harder level unless a supported low-friction path exists.
+
+---
+
+## Marketing-sales island
+
+Write only:
+
+```md
 <!-- rw:marketing-sales:start -->
+### Marketing and sales assessment scope
+- **Assessment status:** complete | needs-verification
+- **Geographic area:** <area>
+- **Geographic applicability:** globally-portable | regional | country-dependent
+- **Validated commercial assessment scope:** <validated wedge area or verified country/countries>
+- **Country-validation gate used:** not-required | satisfied-upstream | satisfied-by-country-validation
+- **Dedupe/variant status:** not-duplicate | regional-variant | possible-near-duplicate
+- **Source languages / local market checks used:** ...
+- **What must not be generalized beyond this scope:** ...
+
+### Buyer and commercial trigger
+- **Initial user / ICP:** ...
+- **Primary buyer / budget owner:** ...
+- **Economic beneficiary / payment proxy:** ...
+- **Main adoption trigger:** ...
+- **Commercial assumption still unvalidated:** ...
+
 ### Likely acquisition channels
-- ...
+| Channel | Why it fits the scoped ICP | Geographic/local constraint | Evidence or basis | Confidence |
+|---|---|---|---|---|
+| ... | ... | ... | upstream / external verification / hypothesis | low / medium / high |
 
 ### Likely sales motion
-- Motion: Self-serve | PLG | founder-led sales | SMB outbound | enterprise sales | channel/partner-led
-- Primary buyer: ...
-- Main adoption trigger: ...
+- **Motion:** self-serve | PLG | founder-led sales | SMB outbound | enterprise sales | channel/partner-led | public/institutional procurement
+- **Time-to-value / onboarding expectation:** ...
+- **Trust, compliance, procurement, integration or payment friction:** ...
+- **Local-language / local-channel requirement:** ...
 
-### Key blockers / friction
+### Competitive and AI commercial friction
+- **Strongest competitor/substitute affecting acquisition:** ...
+- **Generic-AI substitution effect on selling:** ...
+- **Regional/country-specific advantage or friction:** ...
+
+### Proposed go-to-market strategy
 - ...
-
-### Proposed strategy
 - ...
+- **Expansion assumption requiring later validation:** ...
 
-### Complexity
-- very easy|easy|medium|hard|very hard
+### Complexity decision
+- **Complexity:** very easy | easy | medium | hard | very hard | not-assigned
+- **Complexity label:** marketing-sales/very-easy | marketing-sales/easy | marketing-sales/medium | marketing-sales/hard | marketing-sales/very-hard | none
+- **Why:**
+  - ...
+  - ...
+  - ...
 
-### Why
-- 3–6 bullets covering buyer reachability, sales cycle length, need for demos/onboarding, procurement/compliance, virality/referrals, and content/SEO/paid viability
+### Startup-selector handoff
+- **Commercial-strength signal:** strong | moderate | weak | not-assessed
+- **Biggest customer-acquisition or sales risk:** ...
+- **Validation evidence that would materially improve confidence:** ...
 <!-- rw:marketing-sales:end -->
+```
 
-## Apply exactly one label per processed issue
+If `Assessment status: needs-verification`, use `Complexity: not-assigned`, add no complexity label and include the item in the blocked section of the report.
 
-Pick exactly one:
-- marketing-sales/very-easy
-- marketing-sales/easy
-- marketing-sales/medium
-- marketing-sales/hard
-- marketing-sales/very-hard
+---
 
-Do NOT touch issues that already have any `marketing-sales/*` label.
+## Safe-output behavior
 
-## Report issue (MANDATORY if at least 1 issue processed OR discovery was incomplete)
+### Complete assessment
 
-Create exactly one report issue if either:
-- at least one issue was successfully processed, OR
-- discovery was incomplete and that fact must be reported
+For each completed item:
 
-Title:
+1. `update_issue` with `operation: replace-island` for only `rw:marketing-sales`.
+2. `add_labels` for exactly one `marketing-sales/*` label.
+3. No other label or stage changes.
+
+### Needs verification
+
+Where accurate and useful:
+
+1. `update_issue` with the needs-verification island.
+2. Do not add a marketing-sales label.
+3. Include it in the report.
+
+---
+
+## Report
+
+Create one issue titled:
+
 `[marketing-sales] <YYYY-MM-DD>`
 
-Body:
+when at least one assessment is completed, discovery is incomplete, or otherwise promising candidates are blocked by commercial/geographic prerequisites.
 
-# Marketing & Sales Complexity Report
+Use:
+
+```md
+# Marketing & Sales Complexity Report — <YYYY-MM-DD>
 
 ## Summary
-- Discovery complete: yes|no
-- Candidate issues found: <number>
-- Issues taken for processing: <number>
-- Issues successfully processed: <number>
+- **Discovery complete:** yes | no
+- **Candidate issues found before limit:** <number>
+- **Issues taken for processing:** <number>
+- **Issues successfully assessed and labelled:** <number>
+- **Issues blocked / left unlabelled:** <number>
+- **Geographic scopes assessed:** <areas/countries>
+- **Main commercial bottleneck:** ...
 
-## Processed issues
-| Issue | Title | Complexity | Proposed strategy |
+## Completed assessments
+| Issue | Validated commercial scope | Applicability | Complexity | Likely motion | Proposed strategy | Selector relevance |
+|---|---|---|---|---|---|---|
+| #... | ... | ... | ... | ... | ... | ... |
+
+## Blocked or needs-verification assessments
+| Issue | Potential scope | Blocker | Required fix or verification |
 |---|---|---|---|
-| #123 | Example Title 1 | medium | founder-led sales to niche SMBs via outbound + case-study content |
-| #456 | Example Title 2 | easy | self-serve PLG via SEO + templates + referrals |
+| #... | ... | ... | ... |
 
-Rules:
-- Include only successfully processed issues in the table
-- If some taken issues fail, they must not appear in the table
-- If discovery was incomplete, add a short note under Summary explaining why
+## Geographic commercial observations
+- **Area/country concentration in assessed set:** ...
+- **Country-dependent sales constraints observed:** ...
+- **Regional-variant commercial differentiation observed:** ...
+- **What cannot be inferred beyond assessed scopes:** ...
 
-## Calibration guide
+## Discovery / process note
+- ...
+```
 
-- **very easy**: strong self-serve or viral loop; user can adopt alone; little buyer education; short time-to-value
-- **easy**: discoverable and self-serve or light-touch sales; modest onboarding; low procurement friction
-- **medium**: some buyer education or niche targeting needed; repeatable but not trivial acquisition
-- **hard**: outbound, demos, significant trust-building, integrations, or multi-stakeholder approval usually required
-- **very hard**: enterprise or regulated or complex procurement; expensive sales talent likely required; long cycle; heavy onboarding or change management
+---
 
-Always emit safe outputs or noop.
+## Integrity principles
+
+- Measure commercialization difficulty inside the validated wedge scope, not an imagined expansion market.
+- A planned experiment is not proof of sales ease or payment.
+- Do not filter out risky candidates before measuring GTM complexity.
+- Do not assign easy acquisition from optimistic channel speculation.
+- Produce a comparable, scope-honest handoff for Startup Selector.
+
+Always emit safe outputs or `noop`.

@@ -5,11 +5,20 @@ on:
   workflow_dispatch:
     inputs:
       count:
-        description: "How many problems to create in this run (recommended 8–12; higher counts reduce novelty discipline)"
+        description: "Maximum problems to create in this run (recommended 5–10 for evidence-backed seeding)"
         required: true
-        default: "10"
+        default: "6"
+      seed_strategy:
+        description: "Discovery strategy: evidence-backed by default; hypotheses are explicitly marked as unvalidated"
+        required: true
+        default: "signal_first"
+        type: choice
+        options:
+          - signal_first
+          - buyer_first
+          - exploratory_hypothesis
       mode:
-        description: "Seeding mode"
+        description: "Coverage mode"
         required: true
         default: "balanced"
         type: choice
@@ -26,13 +35,77 @@ on:
         required: false
         default: ""
       include_regulated:
-        description: "Allow regulated-ish problems (health/finance/kids) in output"
+        description: "Allow regulated-ish problem discovery (health/finance/kids); never provide advice"
         required: true
         default: "false"
         type: choice
         options:
           - "false"
           - "true"
+      geography_mode:
+        description: "How geographical areas shape discovery"
+        required: true
+        default: "area_focus"
+        type: choice
+        options:
+          - global_portable
+          - area_focus
+          - compare_areas
+      geographic_area:
+        description: "Primary geographical area to investigate"
+        required: true
+        default: "israel"
+        type: choice
+        options:
+          - global-portable
+          - north-america
+          - latin-america
+          - israel
+          - arabic-middle-east
+          - arabic-north-africa
+          - sub-saharan-africa
+          - western-europe
+          - eastern-europe
+          - russia-belarus
+          - caucasus
+          - central-asia
+          - turkey
+          - iran
+          - southern-asia
+          - southeast-asia
+          - china
+          - japan
+          - south-korea
+          - australia-new-zealand
+          - custom-area
+      custom_geographic_area:
+        description: "Custom area name when geographic_area=custom-area"
+        required: false
+        default: ""
+      comparison_areas:
+        description: "If geography_mode=compare_areas, comma-separated geographical areas"
+        required: false
+        default: ""
+      focus_countries:
+        description: "Optional comma-separated countries to inspect only when area-level pain depends on national/local rules or infrastructure"
+        required: false
+        default: ""
+      source_languages:
+        description: "Languages for area-specific evidence discovery, comma-separated, e.g. ar,en | he,en | es,pt,en"
+        required: true
+        default: "he,en"
+      require_area_signal:
+        description: "Require at least one source demonstrating the pain in the selected geographical area"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      minimum_sources:
+        description: "Minimum independent evidence sources for signal_first/buyer_first (recommended 2)"
+        required: true
+        default: "2"
       novelty_mode:
         description: "How aggressively to avoid nearby problem shapes"
         required: true
@@ -55,7 +128,7 @@ on:
         required: true
         default: "2"
       max_oversized_attempts:
-        description: "How many oversized GitHub read/search attempts to tolerate before falling back to recent-run avoidance mode"
+        description: "Oversized GitHub read/search attempts before recent-run avoidance fallback"
         required: true
         default: "3"
 
@@ -70,38 +143,238 @@ permissions:
 sandbox:
   agent: awf
 
-network: {}
+network:
+  allowed:
+    - defaults
+    - github
+    - "*.tavily.com"
+
+mcp-servers:
+  tavily:
+    command: npx
+    args: ["-y", "tavily-mcp"]
+    env:
+      TAVILY_API_KEY: "${{ secrets.TAVILY_API_KEY }}"
+    allowed: ["tavily_search", "tavily_research", "tavily_extract"]
 
 tools:
   github:
     toolsets: [issues]
     read-only: true
     min-integrity: none
+  web-fetch:
 
 safe-outputs:
   staged: false
   github-token: ${{ secrets.SAFEOUTPUTS_GITHUB_TOKEN }}
   create-issue:
-    labels: [type/problem, stage/0-intake]
+    labels: [type/problem, stage/0-evidence]
     max: 25
   noop:
 ---
 
-# Seed problems (recent-window, semi-open catalog, one-by-one creation)
+# Seed problems — evidence-aware, geographical-area-focused startup opportunity intake
 
-Tooling note:
+## Mission
+
+Create **up to** `${{ inputs.count }}` high-quality `type/problem` issues suitable for investigating startup opportunities.
+
+This workflow must optimize for:
+
+1. real and specific pain;
+2. traceable evidence and honest confidence;
+3. a plausible payer or economic beneficiary;
+4. a reachable initial segment in the selected geographical area;
+5. software-enabled first value without heroic dependencies;
+6. novelty relative to the existing repository; and
+7. regional differences that materially change the problem or market-entry opportunity.
+
+The primary geographic unit in this workflow is a **geographical investigation area**, not a country.
+
+Countries are used only as a refinement layer when national or municipal regulation, public services, payment rails, insurance, language, infrastructure, or incumbent services materially determine the pain.
+
+Do **not** optimize for raw issue count, polished storytelling, taxonomy coverage alone, or speculative regional stereotypes.
+Creating fewer well-supported issues is preferred to creating a full batch of weak candidates.
+
+All newly created problems enter `stage/0-evidence`. The dedicated `05-evidence-enrich.md` stage determines whether an issue can move onward to `stage/0-intake` for normalization.
+
+---
+
+## Tooling and evidence discipline
+
+### Repository reads
+
 - Search/read existing issues using GitHub MCP issue tools only.
-- Do NOT use `gh`, `curl`, shell scraping, `python -c`, `/tmp/gh-aw/mcp-payloads/*`, `/tmp/copilot-tool-output*`, `/tmp/gh-aw/agent/*`, or any temp-file parsing to inspect issue data.
-- Do NOT reconstruct coverage maps from shell output or local temp files.
+- Do NOT use `gh`, `curl`, shell scraping, `python -c`, temporary tool-output files, or reconstructed coverage maps to inspect issue data.
 - Use MCP results directly from `list_issues`, `search_issues`, and `issue_read`.
-- If GitHub read tools are unavailable in the model tool list, CALL `noop` exactly once with a short reason and stop.
+- If GitHub read tools are unavailable, CALL `noop` exactly once with reason `missing GitHub read tools` and stop.
 
-Create **up to** `${{ inputs.count }}` new `type/problem` issues using the canonical Problem Candidate structure from AGENTS.md, with each issue explicitly anchored to `Domain + Theme + Subtheme + Archetype`.
+### External evidence discovery
 
-The goal is not merely to hit count.
-The goal is to create the highest-quality, most varied, most non-overlapping set of problems you can create in this run.
+- For `seed_strategy=signal_first` and `seed_strategy=buyer_first`, use Tavily/web-fetch to collect evidence before creating an issue.
+- Search in `${{ inputs.source_languages }}` where useful; for an area with multiple relevant languages, do not rely only on English-language material when local-language signals are reasonably available.
+- Prefer sources with traceable provenance:
+  - official public-service/provider/regulator pages for workflow rules, fees, deadlines or process constraints;
+  - reputable reports, associations, public datasets or research for quantified frequency/stakes;
+  - official competitor/product pages for offered alternatives and public pricing signals;
+  - reputable local or regional news for documented failures;
+  - reviews, forums or complaint threads only as qualitative pain signals.
+- Do not invent statistics, fees, legal rules, API availability, competitor gaps, user frequency, area-wide commonality or market size.
+- If a fact cannot be verified, record it as an assumption requiring validation, not as evidence.
+- If evidence tools are unavailable in `signal_first` or `buyer_first`, CALL `noop` exactly once with reason `missing evidence research tools for evidence-backed seeding` and stop.
 
-Creating fewer issues is better than creating repetitive issues.
+### Evidence vocabulary — mandatory
+
+Never use `observed`, `proven`, `validated`, or equivalent wording merely because a problem sounds plausible.
+
+Use exactly one `Evidence status` value:
+
+- `hypothesis-only` — agent-generated problem framing without sufficient external or primary evidence;
+- `secondary-signalled` — supported by traceable external sources, but not by direct user validation in this repo;
+- `primary-validated` — backed by explicit primary evidence already supplied in repository content, such as interviews, surveys, pilot results, support tickets or direct complaint intake.
+
+A public web source is **secondary** evidence even when it strongly supports the problem.
+
+---
+
+## Strategy behavior
+
+### `signal_first` — default
+
+Begin from traceable pain signals in the selected geographical area, then formulate a problem issue.
+
+Create an issue only if:
+
+- `Evidence status` is `secondary-signalled` or `primary-validated`;
+- there are at least `${{ inputs.minimum_sources }}` independent supporting evidence sources;
+- at least one source signals the pain in the selected `${{ inputs.geographic_area }}` or resolved custom area when `require_area_signal=true`;
+- for `Geographic applicability: country-dependent`, relevant country-specific evidence is present or the missing country verification is explicitly made the blocking unknown for evidence enrichment;
+- the startup screen passes; and
+- novelty and duplicate gates pass.
+
+### `buyer_first`
+
+Begin from identifiable budget owners or direct economic beneficiaries within the selected area, such as SMB owners, field-service operators, operations teams, employers, insurers, professional practices, property managers or local institutions.
+
+Use the same evidence requirements as `signal_first`, and additionally require:
+
+- an explicit likely payer or sponsoring actor;
+- a plausible acquisition path to the first 20 users or buyers in the area;
+- a monetary, revenue, compliance, operational or labour-saving consequence.
+
+### `exploratory_hypothesis`
+
+Generate promising but explicitly unvalidated area-oriented hypotheses when exploratory breadth is intended.
+
+Rules:
+
+- `Evidence status` must be `hypothesis-only`, unless qualifying evidence was actually collected.
+- Never include unsourced factual or quantitative assertions.
+- Set `Readiness: requires-evidence-enrichment` in the issue body.
+- Add `status/needs-info` when possible.
+- Treat these as research backlog items, not ranked startup candidates.
+
+---
+
+## Geographic area model
+
+### Primary investigation areas
+
+Use the selected `${{ inputs.geographic_area }}` as the primary discovery lens. If `custom-area` is selected, use `${{ inputs.custom_geographic_area }}` and require it to be non-empty.
+
+Default area catalog:
+
+- `global-portable`
+- `north-america` — USA and Canada
+- `latin-america`
+- `israel`
+- `arabic-middle-east`
+- `arabic-north-africa`
+- `sub-saharan-africa`
+- `western-europe`
+- `eastern-europe`
+- `russia-belarus`
+- `caucasus`
+- `central-asia`
+- `turkey`
+- `iran`
+- `southern-asia`
+- `southeast-asia`
+- `china`
+- `japan`
+- `south-korea`
+- `australia-new-zealand`
+- `custom-area`
+
+This catalog is an investigation scaffold, not a claim that all countries inside an area are homogeneous. Evidence must determine whether a regional pain is sufficiently shared or requires narrower country validation.
+
+### Geographic applicability
+
+Each candidate must be classified into exactly one:
+
+- `globally-portable` — the pain and software value mechanism plausibly transfer across many areas; the selected area is an initial discovery or launch wedge.
+- `regional` — the pain is meaningfully shaped by shared language, consumer behaviour, business structures, service patterns, economic conditions or distribution channels in the selected area.
+- `country-dependent` — the candidate was discovered from an area lens but the pain or viability depends on country- or municipality-level regulation, public services, insurance, payments, transport rules, identity-document rules, data access or infrastructure.
+
+### Country refinement rule
+
+Do not make country selection mandatory for every candidate.
+
+Country-level examination becomes mandatory before later scoring when the core pain depends on:
+
+- government forms, benefits, identity documents, permits, taxation or business licensing;
+- national or municipal healthcare reimbursement, insurance or public-care pathways;
+- banking, payments, consumer credit or financial regulation;
+- transportation fines, tolls, parking, licensing or permits;
+- school administration controlled by local/national rules;
+- waste disposal and municipal collection rules;
+- privacy/data-residency/compliance rules;
+- integrations or data sources that differ by country.
+
+When such dependency exists:
+
+- set `Geographic applicability: country-dependent`;
+- list `Countries examined, if any`;
+- list `Countries requiring validation before scoring` when not fully checked;
+- do not make a broad area-level factual claim from evidence concerning only one country.
+
+### Geography-mode behavior
+
+#### `global_portable`
+
+- Discover pains expected to transfer across areas.
+- Use `${{ inputs.geographic_area }}` as the first area for evidence and possible market entry, unless it is `global-portable`.
+- Explain why this area is still useful as an entry wedge or validation environment.
+- Do not force a regional narrative for a broadly portable problem.
+
+#### `area_focus`
+
+- Research the selected area deeply.
+- Use relevant regional and local-language sources where feasible.
+- Require a concrete explanation of why the area shapes pain, reachability or opportunity.
+- If evidence shows that a candidate is actually country-dependent, classify it accordingly rather than over-generalizing across the area.
+
+#### `compare_areas`
+
+- Research the selected area and each area in `${{ inputs.comparison_areas }}`.
+- Do not create variants merely by translating the same issue into different regional names.
+- Prefer the area where evidence, stakes, reachable initial users, substitution gap and buildability jointly appear strongest.
+- Record why the selected area appears preferable to compared areas and whether country refinement remains necessary.
+
+### Geographic duplicate rule
+
+Two similar issues framed for different areas are duplicates unless area context materially changes at least one of:
+
+- workflow or regulatory mechanism;
+- relevant provider or employer structure;
+- payer or buyer;
+- first distribution path;
+- available substitutes;
+- language, identity or documentation constraint;
+- payments, data access, platform/infrastructure or integration environment;
+- severity or recurrence supported by evidence.
+
+If area context materially changes the opportunity, keep the new issue as a regional variant and identify the shared cluster and area-specific differentiator in the body.
 
 ---
 
@@ -114,50 +387,52 @@ Before drafting any issue:
    - Prefer the most recent visible issues first.
    - Scan up to `${{ inputs.recent_scan_limit }}` recent visible problem issues when feasible.
    - Pay special attention to issues created in the last `${{ inputs.avoid_recent_days }}` days.
-   - Build the scan from GitHub MCP issue-tool results directly, not from shell/temp-file parsing.
 
 2. Build an internal recent-window map of:
-   - domain counts
-   - persona counts
-   - theme counts
-   - subtheme counts
-   - archetype counts
-   - obvious saturated clusters
+   - domains;
+   - personas;
+   - themes and subthemes;
+   - archetypes;
+   - geographic areas and applicability values when present;
+   - countries requiring validation when present;
+   - likely product shapes;
+   - obvious saturated clusters.
 
 3. Pay extra attention to:
-   - issues created by recent runs of RW: Seed Problems
-   - repeated `domain + theme + subtheme` reuse
-   - repeated “same shape, different noun” patterns
-   - recent issues created on the same calendar day
+   - issues created by recent runs of RW: Seed Problems;
+   - repeated `domain + theme + subtheme` reuse;
+   - repeated `geographic area + failure moment` reuse;
+   - repeated “same shape, different noun” or “same shape, different region” patterns;
+   - reminder/tracker/log app repetition.
 
 ### Oversized-output fallback
-If GitHub issue listing/search repeatedly returns oversized output:
-- tolerate at most `${{ inputs.max_oversized_attempts }}` oversized attempts total
-- then stop broad scanning
-- switch to **recent-run avoidance mode**
 
-In recent-run avoidance mode:
-- use the issues you have already seen as the current saturation map
-- avoid domains/themes/subthemes visibly touched by the latest runs you have already inspected
-- rely on finalist-specific duplicate checks for each candidate
-- do NOT keep thrashing on broader repo reads
+If issue listing/search repeatedly returns oversized output:
+
+- tolerate at most `${{ inputs.max_oversized_attempts }}` oversized attempts total;
+- then stop broad scanning;
+- switch to **recent-run avoidance mode**;
+- use already-seen issues as the saturation map;
+- rely on finalist-specific duplicate checks;
+- do not keep attempting broad reads.
 
 ### Saturation heuristics
-Treat a space as **high-risk / saturated** if any of the following is true in the scanned visible set:
-- same `domain + archetype` appears 4+ times
-- same `domain + theme` appears 3+ times
-- same `persona + archetype` appears 4+ times
-- same `domain + theme + subtheme` appears repeatedly in recent issues
-- same failure pattern appears repeatedly with only noun swaps
-- same likely product shape keeps appearing as a reminder / tracker / log app
 
-When a space is saturated, prefer a different theme, subtheme, or archetype instead of making a slightly renamed variant.
+Treat a space as high-risk/saturated if any of the following is true in the scanned set:
+
+- same `domain + archetype` appears 4+ times;
+- same `domain + theme` appears 3+ times;
+- same `persona + archetype` appears 4+ times;
+- same `geographic area + domain + theme` appears repeatedly;
+- same failure pattern appears repeatedly with only noun or area-name swaps;
+- same likely product shape repeatedly resolves to a reminder, tracker or generic AI assistant.
 
 ---
 
-## Stage 2 — rotation with dark-space preference
+## Stage 2 — area signal discovery and candidate generation
 
-### Domain list (canonical order)
+### Domain list
+
 1. admin-bureaucracy
 2. finance
 3. health
@@ -171,7 +446,8 @@ When a space is saturated, prefer a different theme, subtheme, or archetype inst
 11. security-privacy
 12. travel
 
-### Persona list (canonical order)
+### Persona list
+
 1. consumer
 2. employee
 3. family-parent
@@ -179,8 +455,10 @@ When a space is saturated, prefer a different theme, subtheme, or archetype inst
 5. freelancer
 6. smb-owner
 7. senior
+8. enterprise
 
-### Archetype list (canonical order)
+### Archetype list
+
 1. deadline-window-lapse
 2. status-opacity
 3. evidence-proof-trail
@@ -192,214 +470,290 @@ When a space is saturated, prefer a different theme, subtheme, or archetype inst
 9. ongoing-upkeep-drift
 10. fragmented-records
 
-### Mode rules
+### Coverage-mode rules
 
-#### balanced
-For i = 1..count:
-- start from the canonical domain order
-- start from the canonical persona order
-- start from the canonical archetype order
-- then adjust toward underrepresented combinations if the default slot is saturated, too recent, or too similar to prior issues in this run
+#### `balanced`
 
-#### domain_focus
-- Use `focus_domain` for all items if provided; otherwise fallback to balanced.
-- Rotate persona and archetype with the same dark-space preference.
+- Explore multiple domains and personas.
+- Use dark-space preference, but do not select weak problems just because a category is underrepresented.
+- In `signal_first`, area-specific evidence strength and startup potential win over round-robin coverage.
 
-#### persona_focus
-- Use `focus_persona` for all items if provided; otherwise fallback to balanced.
-- Rotate domain and archetype with the same dark-space preference.
+#### `domain_focus`
 
-### Theme catalog rule (applies to all modes)
-- The domain catalog is a preferred exploration scaffold, not a closed whitelist.
-- For each generated problem, the agent should first try to anchor the problem to:
-  - exactly one catalog theme from the chosen domain
-  - exactly one catalog subtheme within that theme
-- The agent may use an off-catalog theme or subtheme when the catalog does not adequately represent a strong candidate space.
-- Off-catalog choices are allowed only when they are:
-  - materially distinct from existing catalog entries
-  - not just renamed synonyms of existing themes/subthemes
-  - clearly grounded in a concrete failure moment
+- Use `focus_domain` when provided; otherwise fall back to balanced.
+- Rotate personas/archetypes while prioritizing area evidence and commercial potential.
 
-### Theme selection and rotation (within a domain)
-For each generated item:
-- Prefer the next underused catalog theme for the chosen domain.
-- Prefer the next underused subtheme within that theme.
-- Do not force strict round-robin if doing so would create a weaker or more repetitive problem.
-- Use the catalog to improve coverage, not to override judgment.
+#### `persona_focus`
 
-Priority order:
-1. strongest novel candidate within the chosen domain
-2. underused catalog theme / subtheme
-3. off-catalog candidate, only if clearly better than catalog options
+- Use `focus_persona` when provided; otherwise fall back to balanced.
+- Rotate domains/archetypes while prioritizing area evidence and commercial potential.
 
-### Off-catalog discipline
-The agent may introduce:
-- `Theme (off-catalog): <name>`
-- or `Subtheme (off-catalog): <name>`
+### Evidence discovery loop
 
-only when all of the following are true:
-1. no existing catalog entry fits the candidate well without distortion
-2. the candidate is not a near-synonym of an existing catalog entry
-3. the candidate passes duplicate and novelty checks
-4. the candidate has a specific context, workaround, and failure moment
+For each possible slot:
 
-When using an off-catalog entry:
-- keep the name short and concrete
-- avoid broad umbrella labels
-- avoid inventing taxonomy for its own sake
-- prefer the minimum new structure needed to express the problem clearly
-
-Soft cap:
-- no more than 20% of created issues in one run should use off-catalog themes/subthemes unless the recent visible landscape strongly suggests the catalog is missing major areas
-
-### Caps
-Enforce these as soft caps:
-- No archetype appears more than `${{ inputs.max_per_archetype }}` times unless count pressure truly requires it
-- Avoid repeating the same `domain + theme + subtheme` in one run
-- Avoid repeating the same `persona + archetype` pattern in one run unless later slots remain clearly novel
+1. Select a domain/persona/archetype area to explore.
+2. Search for concrete signals relevant to the selected geographical area.
+3. Determine whether the pain appears globally portable, regionally shaped, or country-dependent.
+4. When country-dependent, use `focus_countries` when supplied or record which country verification is still needed.
+5. Identify the failure moment, workaround, affected user and plausible payer.
+6. Gather supporting sources and record which claims each source supports.
+7. Draft three materially distinct candidate formulations where possible.
+8. Reject candidates that do not pass the startup screen, evidence threshold or novelty gate.
+9. Search the repo specifically for the surviving finalist, including its geographic-area mechanism.
+10. If it passes, immediately CALL `create_issue` for that issue before exploring the next slot.
 
 ---
 
-## Stage 3 — theme + subtheme + archetype pairing
+## Stage 3 — startup-potential screen (MANDATORY before create)
+
+Create only a candidate that passes all hard gates and at least five of the seven strength indicators below.
+
+### Hard gates
+
+A candidate must have:
+
+- a concrete failure moment;
+- a named affected persona;
+- a selected geographic area;
+- a stated geographic applicability;
+- a clearly stated current workaround;
+- a software-enabled improvement path;
+- no heroic dependency required for first value;
+- evidence status permitted by the selected `seed_strategy`.
+
+### Strength indicators
+
+Evaluate each as `strong`, `plausible` or `weak`:
+
+1. **Material stakes** — lost money, wasted paid time, lost revenue, penalties, compliance exposure, operational delay, prevented access or significant risk.
+2. **Recurrence** — repeat pain for the user or frequent occurrence across a concentrated group.
+3. **Workaround failure** — users already spend time/money or accept risk because current methods fail.
+4. **Payer clarity** — an identifiable actor plausibly benefits enough to pay or sponsor adoption.
+5. **Reachability** — a credible channel to initial users/buyers exists in the area.
+6. **MVP feasibility** — first value is deliverable without difficult partnership, inaccessible data or unnecessary regulation.
+7. **Wedge seed** — there is an early hypothesis for why a narrow segment or area may be underserved.
+
+### Decision rule
+
+- For `signal_first` and `buyer_first`, create only when at least five indicators are `strong` or `plausible`, with no `weak` result for **Material stakes**, **Payer clarity**, or **MVP feasibility**.
+- For `exploratory_hypothesis`, allow weaker or uncertain indicators only if the issue clearly records them as assumptions and sets `Readiness: requires-evidence-enrichment`.
+
+Do not convert a weak candidate into a confident one by inventing a feature, integration, market statistic or regional gap.
+
+---
+
+## Stage 4 — taxonomy and geographic anchoring
 
 Each issue must be anchored to:
-- exactly **one domain theme**
-- exactly **one subtheme** within that theme
-- exactly **one archetype**
 
-The final problem must clearly reflect all three.
+- exactly one domain;
+- exactly one theme;
+- exactly one subtheme;
+- exactly one persona;
+- exactly one archetype;
+- exactly one geographic area;
+- exactly one geographic applicability.
 
-Definitions:
-- `Theme` = the broader activity or failure area inside the domain
-- `Subtheme` = the narrower situation within that theme
-- `Archetype` = the underlying problem shape
+The catalog below is a preferred exploration scaffold, not a closed whitelist.
+An off-catalog theme or subtheme is permitted only when it fits the evidenced pain more naturally and is not a near-synonym of an existing entry.
 
-### Natural-fit rule (MANDATORY)
-Reject a candidate if the chosen `Theme + Subtheme` does not describe the problem naturally.
-
-The agent must be able to express the fit in one plain-English sentence of this form:
+The agent must be able to state:
 
 - `This is a <theme> / <subtheme> problem because ...`
+- `This is <globally-portable|regional|country-dependent> in the context of <geographic area> because ...`
 
-If that sentence sounds strained, overly abstract, or mismatched to the actual failure moment:
-- choose a better-fitting theme/subtheme
-- or reject the candidate
+Reject or reclassify the candidate when either explanation feels forced.
 
-Do not backfit taxonomy just to fill a matrix slot.
-A naturally-classified problem is better than a forced catalog fit.
+Soft caps:
 
----
-
-## Stage 4 — shortlist before create (MANDATORY)
-
-For each slot, do this internally before creating anything:
-
-1. Draft **3 candidate ideas** for the slot.
-2. Make sure the 3 candidates are meaningfully distinct on at least one of:
-   - trigger moment
-   - failure moment
-   - current workaround
-   - primary object of work
-   - cadence / frequency
-3. Reject any candidate that:
-   - crowds a saturated cluster
-   - looks like a noun-swapped variant of an existing issue
-   - is too generic
-   - is only a “tracker/reminder” with no sharp failure moment
-   - has a forced or unnatural `Theme + Subtheme` fit
-4. Pick the strongest surviving candidate.
-5. Search the repo again specifically for that finalist.
-6. If it still passes novelty and duplicate checks, immediately call `create_issue` for that one issue before planning later slots.
-
-### Subtheme discipline
-For each slot:
-- generate candidates from the chosen `theme`
-- force the 3 internal candidates to come from **different subthemes** whenever possible
-- do not create two issues from the same `domain + theme + subtheme` in one run unless the run size makes it unavoidable and novelty still clearly passes
-- if a subtheme repeatedly collapses into the same product shape as nearby issues, reject that subtheme for the current run and choose another
-
-Maintain an internal reject list for the current run.
-If a candidate is rejected as a near-duplicate, do not circle back into the same nearby idea space again in this run.
-
-Do not finalize the full batch first and create later.
-
-The required loop is:
-- choose one slot
-- shortlist
-- final duplicate check
-- immediately create that issue
-- only then move to the next slot
+- no archetype more than `${{ inputs.max_per_archetype }}` times unless count pressure truly requires it;
+- no repeated `domain + theme + subtheme + geographic area` in one run;
+- no more than 20% off-catalog classifications in one run unless strong sourced evidence justifies broader discovery.
 
 ---
 
-## Stage 5 — novelty gate (STRICT)
+## Stage 5 — novelty and duplicate gate (STRICT)
 
-A candidate is acceptable only if it is materially different from the nearest visible existing issue.
+A finalist must be materially different from its nearest visible existing issue.
 
 ### Minimum novelty rule
-A new candidate must differ from the nearest similar visible issue on at least **2** of these axes:
-1. trigger moment
-2. failure moment
-3. current workaround
-4. primary object being managed / coordinated / verified
-5. cadence or recurrence pattern
-6. persona
-7. domain context
 
-### Subtheme overlap rule
-If a candidate shares the same `domain + theme + subtheme` as a visible nearby issue, reject it unless it differs on at least **3** of these axes:
-1. trigger moment
-2. failure moment
-3. current workaround
-4. primary object being managed / coordinated / verified
-5. cadence or recurrence pattern
-6. persona
-7. stakes / consequences
+The candidate must differ on at least two of:
 
-If it still appears to have the same likely product shape, reject it anyway.
+1. trigger moment;
+2. failure moment;
+3. current workaround;
+4. primary object being managed, coordinated or verified;
+5. cadence/recurrence;
+6. persona;
+7. buyer/payer;
+8. geographical-area mechanism;
+9. distribution path.
 
-### Stricter rule for high-risk spaces
-If the candidate shares the same:
-- domain
-- persona
-- and archetype
+### Same-theme rule
 
-with a nearby visible issue, it must differ on at least **3** axes above or be rejected.
+If it shares `domain + theme + subtheme` with a nearby issue, require differences on at least three axes above and reject it if the likely product shape remains the same.
 
-### Explicit anti-pattern
-Reject candidates that are basically:
-- same pain shape
-- same workaround shape
-- same likely product shape
-- only the noun changed
+### Same-area rule
+
+If it shares `domain + persona + archetype + geographic area` with a nearby issue, require differences on at least three axes above or reject it.
+
+### Regional variant rule
+
+Do not create a geographic-area variant only because a source was found in a different region. Keep it only when an area-specific workflow, provider structure, substitute, buyer, distribution channel, language/documentation constraint or infrastructure difference materially affects the startup opportunity.
+
+### Explicit anti-patterns
+
+Reject candidates that are essentially:
+
+- same pain shape, workaround and likely product with changed nouns;
+- same pain shape repackaged under another geographical area without a causal difference;
+- generic reminder/tracker/log ideas lacking sharp consequences;
+- “AI assistant for X” without ownership of a meaningful workflow step;
+- broad societal/macro problems without a target buyer and executable product wedge.
 
 ---
 
 ## Stage 6 — recent-run suppression
 
-Avoid creating issues that are too close to problems created in the last `${{ inputs.avoid_recent_days }}` days, with recency-weighted caution for repeated `domain + theme + subtheme` clusters.
+Avoid creating issues too close to candidates created in the last `${{ inputs.avoid_recent_days }}` days.
 
-Apply these suppressions unless the candidate is unusually strong and clearly distinct:
-- same `domain + theme + subtheme`
-- same `domain + archetype`
-- same `subtheme + failure moment`
-- same `persona + workaround shape`
-- same likely product shape or same “solution gravity” toward a reminder/tracker/log app
+Suppress, unless unusually strong and clearly distinct:
 
-### novelty_mode behavior
+- same `domain + theme + subtheme`;
+- same `domain + archetype`;
+- same `persona + workaround shape`;
+- same `geographic area + area-specific mechanism`;
+- same likely product shape.
 
-#### conservative
-- strongly avoid recent clusters
-- require the stricter novelty rule whenever anything feels adjacent
-- prefer underrepresented domains/personas over high-confidence but nearby ideas
+### `novelty_mode` behavior
 
-#### balanced
-- avoid recent clusters unless the candidate is clearly sharper and different
-- use the default novelty rules above
+#### `conservative`
 
-#### exploratory
-- allow closer adjacency only when the candidate opens a genuinely new wedge, trigger, or failure mode
-- still reject exact or thin variants
+Strongly avoid adjacent recent clusters; prefer clearly distinct evidence-backed opportunities.
+
+#### `balanced`
+
+Avoid recent clusters unless the candidate has distinctly stronger evidence, stakes or regional mechanism.
+
+#### `exploratory`
+
+Allow closer adjacency only where the candidate reveals a genuinely new wedge, buyer, geographic-area mechanism or failure mode; never allow thin duplicates.
+
+---
+
+## Regulated-domain handling
+
+If `include_regulated=false`:
+
+- Avoid candidates requiring diagnosis, medical advice, legal advice, investment/credit advice, financial-account credentials, children’s sensitive data, or compliance-heavy workflows.
+- Light administrative or documentation pains may be used when first product value is plainly non-clinical and non-advisory.
+
+If `include_regulated=true`:
+
+- Regulated-adjacent problems may be explored, but never provide medical, legal or financial advice.
+- Frame candidate value as workflow support, coordination, verification, logistics, documentation, tracking or compliant handoff.
+- Explicitly state compliance/data risks and avoid claiming an easy MVP where regulation is central.
+- When the regulation differs at country level, classify as `country-dependent`.
+
+---
+
+## Required issue body structure
+
+For each created issue, use this template exactly enough for downstream agents to parse it reliably:
+
+```md
+**JTBD:** When ..., I want ..., so I can ...
+
+---
+
+**Context & frequency:**
+...
+
+**Pain / stakes:**
+...
+
+**Current workaround:**
+...
+
+**Failure moment:**
+...
+
+**Why software may help:**
+...
+
+---
+
+## Evidence and confidence
+
+**Evidence status:** hypothesis-only | secondary-signalled | primary-validated
+**Readiness:** ready-for-evidence-gate | requires-evidence-enrichment
+
+### Evidence sources
+| Claim supported | Source / organization | Date accessed or published | Geographic area / country | Source type |
+|---|---|---|---|---|
+| ... | ... | ... | ... | official / research / industry / reputable-news / qualitative-signal / competitor |
+
+### Unsupported assumptions requiring validation
+- ...
+
+---
+
+## Startup screen
+
+- **Affected user:** ...
+- **Likely payer / economic beneficiary:** ...
+- **Material consequence:** ...
+- **Recurrence signal:** ...
+- **Broken workaround signal:** ...
+- **Reachable first segment / channel in area:** ...
+- **MVP without heroic dependencies:** ...
+- **Early wedge hypothesis:** ...
+- **Critical unknown to validate next:** ...
+
+---
+
+## Geographic framing
+
+- **Geographic area:** <predefined area or custom area>
+- **Geographic applicability:** globally-portable | regional | country-dependent
+- **Areas compared, if any:** <areas or none>
+- **Countries examined, if any:** <countries or none>
+- **Countries requiring validation before scoring, if any:** <countries or none>
+- **Source language(s):** <languages>
+- **Why this area matters:** ...
+- **Area-specific pain signal:** ...
+- **Country-level dependency, if any:** ...
+- **Transferability beyond this area:** ...
+- **Area-specific competitor/substitute note:** ...
+
+---
+
+Domain: <domain>
+Theme: <theme>
+Subtheme: <subtheme>
+Catalog status: <catalog|off-catalog>
+Persona: <persona>
+Archetype: <archetype>
+Geographic area: <area>
+Geographic applicability: <globally-portable|regional|country-dependent>
+```
+
+### Body rules
+
+- Do not assert source-backed facts outside the evidence table unless the claim is clearly supported there.
+- Do not describe public-web findings as `primary-validated`.
+- In `signal_first` or `buyer_first`, use `Readiness: ready-for-evidence-gate` only when the seeder's evidence requirement and startup screen pass; `05-evidence-enrich.md` still makes the advancement decision.
+- In `exploratory_hypothesis`, use `Readiness: requires-evidence-enrichment` unless qualifying evidence was actually gathered.
+- Do not generalize a finding from one country to an entire geographical area without supporting area-level or multi-country evidence.
+
+### Labels
+
+- Must include: `type/problem`, `stage/0-evidence`.
+- SHOULD include: `domain/<domain>`, `persona/<persona>`.
+- For exploratory hypothesis issues, SHOULD include `status/needs-info` when supported by repository label policy.
+- Do not create ad-hoc geography labels unless repository policy explicitly defines them; store geographic-area metadata in the body.
 
 ---
 
@@ -407,1035 +761,198 @@ Apply these suppressions unless the candidate is unusually strong and clearly di
 
 Use safeoutputs tool calls. Do NOT output NDJSON/JSON lines.
 
-- For each issue to create, CALL `create_issue` with:
-  - title: `Problem: ...`
-  - body: full template text
-  - labels: include `domain/<domain>` and `persona/<persona>` when possible
-- Create between 1 and `${{ inputs.count }}` issues.
-- If you create 0 issues for any reason, CALL `noop` exactly once with a short reason.
+For each issue to create:
 
-Create issues **one-by-one**:
-- shortlist
-- final duplicate check
-- immediately call `create_issue`
-- only then move to the next slot
+1. shortlist one finalist;
+2. run its final evidence/startup/novelty/duplicate checks;
+3. immediately CALL `create_issue` with title `Problem: <7–12 words>` and the full required body;
+4. only then move to the next candidate.
 
-Do not draft, finalize, or summarize a full batch before writing any issues.
-If you have completed final checking for one issue, write it immediately.
+Create between 1 and `${{ inputs.count }}` issues only when qualified candidates exist.
+If no candidate qualifies, CALL `noop` exactly once with a short reason such as `no evidence-backed, novel startup-worthy candidate passed the gates for the selected geographical area`.
 
 ---
 
-## include_regulated handling
+## Compact catalog themes by domain (non-exhaustive)
 
-If `include_regulated=false`:
-- avoid problems that require handling:
-  - medical diagnoses
-  - financial account credentials
-  - children’s sensitive personal data
-  - compliance-heavy clinical or legal workflows
-- light admin/finance/health paperwork is still okay if the product shape is clearly non-clinical and non-sensitive
-
-If `include_regulated=true`:
-- regulated-ish problems are allowed
-- still avoid giving medical, legal, or financial advice
-- frame the issue as tracking, coordination, verification, logistics, documentation, or workflow support
-
----
-
-## Per-issue requirements
-
-For each created issue:
-
-### Title
-- `Problem: <7–12 words>`
-
-### Body must include
-- `**JTBD:**` one-liner in the format “When…, I want…, so I can…”
-- `---`
-- `**Context & frequency:**`
-- `**Pain / stakes:**`
-- `**Current workaround:**`
-- `**Failure moment:**`
-- `**Evidence strength:**` one of:
-  - observed
-  - inferred-strong
-  - inferred-light
-- `**Why software may help:**`
-- `---`
-- `Domain: <domain>`
-- `Theme: <theme>`
-- `Subtheme: <subtheme>`
-- `Catalog status: <catalog|off-catalog>`
-- `Persona: <persona>`
-- `Archetype: <archetype>`
-
-### Labels
-- Must include: `type/problem`, `stage/0-intake`
-- SHOULD include: `domain/<domain>`, `persona/<persona>`
-
----
-
-## Quality constraints
-
-Reject low-signal issues.
-
-### Do NOT create
-- vague “stress / productivity / organization” problems without a concrete failure moment
-- macro problems (war, politics, inflation, society-wide complaints)
-- feature requests disguised as problems
-- ideas whose only plausible solution is “another dashboard”
-- ideas whose only pain is mild inconvenience
-- ideas that are just generic reminders without a sharp consequence
-
-### Prefer
-- clear moment of failure
-- concrete money/time/coordination loss
-- specific persona in a specific situation
-- visible workaround already in use
-- software-fit without heroic integrations
-- problem shapes that feel different from recent seeds
-- problems that are specific at the `theme + subtheme` level, not just the domain level
-- Prefer catalog-fit problems when strong, but prefer a stronger off-catalog problem over a weak catalog-compliant one.
-- taxonomy that fits naturally in plain English, not labels forced to satisfy rotation
-
----
-
-## Search guidance for duplicate checks
-
-Before creating a finalist, search existing visible problem issues using:
-- persona
-- domain
-- theme
-- subtheme
-- core verb
-- failure moment
-- 1–2 distinctive nouns
-
-Search both broad and narrow variants.
-
-If a visible issue matches the same:
-- theme
-- subtheme
-- JTBD structure
-- failure moment
-- and likely solution gravity
-
-reject it and choose a different finalist.
-
----
-
-## Catalog themes by domain (non-exhaustive)
-
-These lists are intentionally non-exhaustive.
-They are the default map for exploration, not the full boundary of allowed problem spaces.
-Prefer them first, but allow off-catalog discovery when justified by a clearly stronger candidate.
+Use these as stable theme anchors. Choose or formulate a concrete subtheme derived from the evidence and geographical-area mechanism. A stronger sourced off-catalog problem is preferable to a weak forced catalog fit.
 
 ### admin-bureaucracy
 
-1. `identity-and-record-matching`
-   - name / transliteration mismatch across agencies
-   - date-of-birth / address mismatch
-   - duplicate person records
-   - updating changed personal details everywhere
-
-2. `eligibility-and-prerequisites`
-   - checking eligibility before applying
-   - discovering missing prerequisites too late
-   - understanding accepted proof types
-   - sequencing dependent requirements correctly
-
-3. `applications-and-submissions`
-   - incomplete form submission
-   - attachment format / size rejection
-   - required-field ambiguity
-   - re-entering the same data across forms
-
-4. `appointments-and-in-person-visits`
-   - booking scarce slots
-   - rescheduling after a missed appointment
-   - preparing all required documents for the visit
-   - coordinating companion / translator / escort attendance
-
-5. `status-tracking-and-follow-up`
-   - request stuck with no status visibility
-   - unclear next step after submission
-   - chasing updates across channels
-   - knowing when to escalate
-
-6. `payments-fees-and-penalties`
-   - paying the right fee for the right process
-   - proving payment to the agency
-   - avoiding late penalties
-   - reconciling payment receipt with case status
-
-7. `renewals-and-validity-windows`
-   - renewal windows opening and closing
-   - expired document discovered during another process
-   - overlapping validity periods
-   - coordinating renewal dependencies
-
-8. `rejections-appeals-and-corrections`
-   - understanding why something was rejected
-   - correcting and resubmitting
-   - appealing within the allowed window
-   - assembling supporting proof for reconsideration
-
-9. `cross-agency-coordination`
-   - one office waiting on another office
-   - carrying the same document to multiple agencies
-   - inconsistent instructions across institutions
-   - proving one agency action to another
-
-10. `certification-and-official-proof`
-   - certified copies / notarization / apostille
-   - proof of residence / family status / identity
-   - official translations
-   - proving authenticity of documents
-
-11. `address-residency-and-local-records`
-   - address change propagation
-   - local registration / deregistration
-   - proof of residence for service eligibility
-   - mismatched locality records
-
-12. `representation-and-delegation`
-   - applying on behalf of a family member
-   - power-of-attorney paperwork
-   - guardian / caregiver authorization
-   - proxy status proof across institutions
-
----
+- identity-and-record-matching
+- eligibility-and-prerequisites
+- applications-and-submissions
+- appointments-and-in-person-visits
+- status-tracking-and-follow-up
+- payments-fees-and-penalties
+- renewals-and-validity-windows
+- rejections-appeals-and-corrections
+- cross-agency-coordination
+- certification-and-official-proof
+- address-residency-and-local-records
+- representation-and-delegation
 
 ### finance
 
-1. `billing-and-payment-obligations`
-   - bill due-date confusion
-   - autopay failures
-   - partial payment tracking
-   - avoiding fees from timing mismatches
-
-2. `refunds-reimbursements-and-credits`
-   - promised refund not arriving
-   - expense reimbursement follow-up
-   - store / airline / service credit tracking
-   - proving eligibility for reimbursement
-
-3. `disputes-chargebacks-and-fraud`
-   - disputing incorrect charges
-   - collecting proof for chargebacks
-   - tracking bank / card issuer responses
-   - recovering after suspected fraud
-
-4. `subscriptions-renewals-and-lapses`
-   - accidental renewals
-   - losing access after lapse
-   - overlapping subscriptions
-   - cancellation timing and proof
-
-5. `taxes-filings-and-benefits`
-   - collecting tax documents
-   - eligibility for deductions / credits
-   - filing deadline dependencies
-   - status follow-up on tax-related submissions
-
-6. `household-money-coordination`
-   - splitting irregular shared expenses
-   - reconciling who paid what
-   - handling family budget exceptions
-   - remembering agreed money rules
-
-7. `cashflow-and-timing-mismatch`
-   - expenses due before income arrives
-   - moving money across accounts on time
-   - avoiding overdrafts from poor timing visibility
-   - syncing payment calendars with pay cycles
-
-8. `income-payroll-and-payout-errors`
-   - paycheck discrepancy resolution
-   - contractor payout follow-up
-   - missing bonuses / commissions / reimbursements
-   - proving hours / deliverables for payment
-
-9. `claims-warranties-and-coverage-costs`
-   - filing a claim with financial consequences
-   - proving purchase / ownership
-   - tracking deductible / reimbursement implications
-   - timing coverage-related renewals
-
-10. `financial-document-gathering`
-   - collecting statements for applications
-   - finding past invoices / receipts
-   - assembling proof of income
-   - preparing records for audits / reviews
-
-11. `debt-and-repayment-organization`
-   - tracking multiple repayment schedules
-   - avoiding missed installments
-   - prioritizing debts with different consequences
-   - following up on settlement / hardship requests
-
-12. `price-comparison-and-commitment-decisions`
-   - comparing offers with different fee structures
-   - spotting hidden costs
-   - deciding when to lock in a rate / plan
-   - tracking price commitments before expiry
-
----
+- billing-and-payment-obligations
+- refunds-reimbursements-and-credits
+- disputes-chargebacks-and-fraud
+- subscriptions-renewals-and-lapses
+- taxes-filings-and-benefits
+- household-money-coordination
+- cashflow-and-timing-mismatch
+- income-payroll-and-payout-errors
+- claims-warranties-and-coverage-costs
+- financial-document-gathering
+- debt-and-repayment-organization
+- price-comparison-and-commitment-decisions
 
 ### health
 
-1. `appointments-referrals-and-authorizations`
-   - finding the right appointment type
-   - referral requirement discovered late
-   - prior authorization status tracking
-   - coordinating approval before care
-
-2. `care-plan-follow-through`
-   - remembering next steps after a visit
-   - tracking ordered tests / consults
-   - completing multi-step care tasks
-   - knowing what is still pending
-
-3. `labs-imaging-and-results`
-   - preparing correctly for tests
-   - following up on missing results
-   - comparing results across providers
-   - bringing the right records to the next visit
-
-4. `records-documents-and-forms`
-   - medical record requests
-   - transferring records between providers
-   - filling health-admin forms
-   - keeping vaccination / clearance / exam documents organized
-
-5. `medications-and-supplies`
-   - refill timing
-   - supply replenishment for ongoing use
-   - coordinating prescriptions across providers
-   - handling pharmacy substitution / availability issues
-
-6. `caregiver-and-family-coordination`
-   - multiple people supporting one patient
-   - handoff after appointments
-   - sharing instructions accurately
-   - covering care when the main caregiver is unavailable
-
-7. `insurance-billing-and-claims`
-   - denied claim follow-up
-   - billing code / amount mismatch
-   - proving eligibility / coverage
-   - reconciling provider bill vs insurer response
-
-8. `visit-prep-and-post-visit-recovery`
-   - preparing questions and documents
-   - arranging transport / companion help
-   - tracking recovery instructions after discharge
-   - making sure follow-up tasks happen
-
-9. `care-access-and-scheduling-friction`
-   - long waitlists
-   - reschedule openings
-   - coordinating care across providers with conflicting calendars
-   - managing missed / cancelled appointments
-
-10. `home-care-and-routine-logistics`
-   - daily routine adherence
-   - home monitoring record-keeping
-   - care tasks across different times of day
-   - coordinating temporary substitute caregivers
-
-11. `care-transitions-and-special-events`
-   - hospital discharge to home
-   - starting care in a new clinic / city / insurer
-   - temporary travel while maintaining care routines
-   - transferring responsibility between family members
-
-12. `neutral-health-tracking`
-   - journaling symptoms / side effects neutrally
-   - tracking triggers or context around episodes
-   - spotting missing logs needed for appointments
-   - organizing observations for a future visit
-
----
+- appointments-referrals-and-authorizations
+- care-plan-follow-through
+- labs-imaging-and-results
+- records-documents-and-forms
+- medications-and-supplies
+- caregiver-and-family-coordination
+- insurance-billing-and-claims
+- visit-prep-and-post-visit-recovery
+- care-access-and-scheduling-friction
+- home-care-and-routine-logistics
+- care-transitions-and-special-events
+- neutral-health-tracking
 
 ### work
 
-1. `approvals-reviews-and-signoffs`
-   - waiting on approvals
-   - unclear approver ownership
-   - lost context in review loops
-   - following up without spamming
-
-2. `handoffs-and-cross-team-coordination`
-   - task dropped between teams
-   - dependency blocked by another function
-   - unclear handoff ownership
-   - missing information during transfer
-
-3. `meetings-decisions-and-follow-through`
-   - action items disappearing after meetings
-   - decision memory getting lost
-   - prep work not completed on time
-   - attendees not aligned on next steps
-
-4. `documents-knowledge-and-versioning`
-   - finding the latest document
-   - conflicting versions in circulation
-   - knowledge trapped in chats / folders
-   - missing context for new joiners
-
-5. `scheduling-staffing-and-shifts`
-   - shift swaps and coverage gaps
-   - interview scheduling friction
-   - vacation / leave coordination
-   - on-call / rota confusion
-
-6. `onboarding-training-and-certification`
-   - onboarding tasks scattered across systems
-   - required training completion drift
-   - certification / access expiry
-   - unclear readiness for role responsibilities
-
-7. `access-permissions-and-procurement`
-   - waiting for system access
-   - permission request ambiguity
-   - purchasing request status opacity
-   - missing prerequisites for equipment / software
-
-8. `expense-reimbursement-and-internal-admin`
-   - expense claims missing proof
-   - policy confusion during submission
-   - late reimbursement follow-up
-   - recurring internal form friction
-
-9. `customer-vendor-and-partner-coordination`
-   - contractor / vendor follow-up
-   - external dependency causing internal delay
-   - unclear status between organizations
-   - documenting commitments from outside parties
-
-10. `incident-exception-and-recovery`
-   - unexpected work disruption
-   - triage ownership confusion
-   - recovery checklist gaps
-   - lessons / actions not captured after the event
-
-11. `field-ops-and-distributed-work`
-   - technician / field worker coordination
-   - location-specific prep requirements
-   - route + task sequencing issues
-   - proof of visit / completion collection
-
-12. `status-reporting-and-repeat-communication`
-   - repeating the same updates to many stakeholders
-   - assembling status from scattered systems
-   - weekly reporting overhead
-   - inconsistent status wording across audiences
-
----
+- approvals-reviews-and-signoffs
+- handoffs-and-cross-team-coordination
+- meetings-decisions-and-follow-through
+- documents-knowledge-and-versioning
+- scheduling-staffing-and-shifts
+- onboarding-training-and-certification
+- access-permissions-and-procurement
+- expense-reimbursement-and-internal-admin
+- customer-vendor-and-partner-coordination
+- incident-exception-and-recovery
+- field-ops-and-distributed-work
+- status-reporting-and-repeat-communication
 
 ### home
 
-1. `maintenance-and-preventive-upkeep`
-   - recurring maintenance schedules
-   - seasonal home prep
-   - forgetting low-frequency tasks
-   - tracking what was last done and by whom
-
-2. `repairs-vendors-and-service-calls`
-   - comparing repair options
-   - coordinating appointments with service providers
-   - following up on unfinished work
-   - tracking quotes, warranties, and callbacks
-
-3. `utilities-outages-and-service-accounts`
-   - opening / closing accounts
-   - outage follow-up and updates
-   - meter / billing discrepancies
-   - proving account ownership / address details
-
-4. `household-items-storage-and-findability`
-   - not knowing where items are stored
-   - duplicate purchases because items cannot be found
-   - seasonal item rotation
-   - keeping manuals / spare parts tied to items
-
-5. `renting-landlord-and-building-admin`
-   - tracking landlord requests
-   - building management communication
-   - lease-related deadlines
-   - documenting home issues and follow-up
-
-6. `home-insurance-and-damage-events`
-   - documenting incidents for claims
-   - gathering proof of ownership / value
-   - repair coordination after damage
-   - claim status follow-up
-
-7. `cleaning-chores-and-role-coordination`
-   - recurring chores unevenly distributed
-   - unclear ownership of tasks
-   - prep for guests / events
-   - exceptions when one person is unavailable
-
-8. `packages-deliveries-and-home-access`
-   - delivery timing uncertainty
-   - package handoff coordination
-   - missed deliveries
-   - access instructions for workers / couriers
-
-9. `safety-security-and-emergency-readiness`
-   - safety check routines
-   - emergency supply rotation
-   - household contact / utility information readiness
-   - incident prep and recovery checklists
-
-10. `renovation-projects-and-change-orders`
-   - managing multi-step home projects
-   - contractor timeline drift
-   - scope changes and cost tracking
-   - dependencies between trades / workers
-
-11. `pet-and-dependent-care-at-home`
-   - feeding / medicine / routine coordination
-   - sitter / walker handoff notes
-   - temporary coverage planning
-   - keeping supplies stocked
-
-12. `decluttering-disposal-and-replacement`
-   - deciding what to keep / donate / toss
-   - special disposal rules
-   - replacing items after disposal
-   - maintaining a record of what left the home
-
----
+- maintenance-and-preventive-upkeep
+- repairs-vendors-and-service-calls
+- utilities-outages-and-service-accounts
+- household-items-storage-and-findability
+- renting-landlord-and-building-admin
+- home-insurance-and-damage-events
+- cleaning-chores-and-role-coordination
+- packages-deliveries-and-home-access
+- safety-security-and-emergency-readiness
+- renovation-projects-and-change-orders
+- pet-and-dependent-care-at-home
+- decluttering-disposal-and-replacement
 
 ### mobility
 
-1. `commute-planning-and-disruption-recovery`
-   - recurring route planning
-   - disruption fallback choices
-   - deciding when to leave earlier
-   - preserving commitments when transport fails
-
-2. `parking-tolls-and-fines`
-   - parking session expiry
-   - toll / violation follow-up
-   - proving payment or entitlement
-   - appeal timing and evidence
-
-3. `vehicle-maintenance-and-validity`
-   - service schedules
-   - inspection / registration renewal
-   - warranty and repair-history tracking
-   - coordinating maintenance around daily use
-
-4. `breakdowns-accidents-and-roadside-events`
-   - roadside assistance coordination
-   - accident proof gathering
-   - insurance / repair handoff after an incident
-   - temporary mobility fallback while vehicle is unavailable
-
-5. `public-transport-and-pass-management`
-   - pass renewal / expiry
-   - disruption alerts that need action
-   - transfer timing uncertainty
-   - proving fare / discount eligibility
-
-6. `family-pickup-and-shared-ride-coordination`
-   - school pickup exceptions
-   - ride-sharing responsibilities
-   - custody / two-household transport coordination
-   - backup driver arrangements
-
-7. `accessibility-and-special-constraint-routing`
-   - stroller / wheelchair / mobility constraints
-   - elevator / station access uncertainty
-   - route suitability under special needs
-   - choosing the least-friction trip option
-
-8. `ride-cost-and-option-comparison`
-   - taxi / transit / parking tradeoffs
-   - recurring trip cost comparison
-   - choosing between speed and predictability
-   - comparing multimodal options
-
-9. `shared-vehicle-and-asset-coordination`
-   - household vehicle sharing
-   - company car / pool car booking
-   - handoff of keys / passes / charging cards
-   - condition / fuel / charge visibility between users
-
-10. `ev-charging-and-range-logistics`
-   - planning charging around commitments
-   - charger availability uncertainty
-   - home vs public charging tradeoffs
-   - tracking charging accessories / cards / apps
-
-11. `ownership-documents-and-admin`
-   - title / insurance / registration paperwork
-   - proving ownership during transactions
-   - updating records after sale / purchase
-   - document readiness during travel or incidents
-
-12. `lost-items-and-in-transit-recovery`
-   - items left on transport
-   - tracking recovery attempts
-   - proving ownership of lost items
-   - coordinating pickup / return after recovery
-
----
+- commute-planning-and-disruption-recovery
+- parking-tolls-and-fines
+- vehicle-maintenance-and-validity
+- breakdowns-accidents-and-roadside-events
+- public-transport-and-pass-management
+- family-pickup-and-shared-ride-coordination
+- accessibility-and-special-constraint-routing
+- ride-cost-and-option-comparison
+- shared-vehicle-and-asset-coordination
+- ev-charging-and-range-logistics
+- ownership-documents-and-admin
+- lost-items-and-in-transit-recovery
 
 ### shopping
 
-1. `comparison-and-selection`
-   - comparing similar products with different tradeoffs
-   - choosing among confusing bundles / plans
-   - deciding with incomplete specs
-   - narrowing options for a specific constraint
-
-2. `size-fit-and-compatibility`
-   - sizing uncertainty across brands
-   - compatibility with existing gear / appliances
-   - replacement-part fit verification
-   - avoiding wrong-format purchases
-
-3. `purchasing-proof-and-records`
-   - keeping receipts accessible
-   - matching order to proof of purchase
-   - preserving warranty-relevant details
-   - finding proof later for returns / claims
-
-4. `delivery-preorder-and-availability`
-   - preorder status opacity
-   - partial shipment confusion
-   - restock timing uncertainty
-   - deciding whether to wait, switch, or cancel
-
-5. `returns-exchanges-and-recovery`
-   - return window management
-   - exchange vs refund decision tracking
-   - partial return complications
-   - proving condition / eligibility during disputes
-
-6. `warranty-claims-and-aftercare`
-   - warranty coverage interpretation
-   - repair vs replacement path
-   - claim evidence gathering
-   - following up with manufacturer / retailer
-
-7. `recurring-rebuy-and-household-replenishment`
-   - running out of essentials
-   - timing reorders across many items
-   - balancing bulk vs freshness / storage
-   - remembering preferred versions of repeat buys
-
-8. `shared-shopping-and-list-coordination`
-   - duplicate buys by family members
-   - unclear ownership of shopping tasks
-   - conflict between preferences on the same list
-   - handling substitutions when one person shops for another
-
-9. `gift-purchasing-and-event-buying`
-   - remembering constraints and preferences
-   - tracking gift ideas over time
-   - timing deliveries around events
-   - exchanges / returns after gifting
-
-10. `marketplace-and-seller-trust`
-   - comparing sellers, not just products
-   - spotting risky listings
-   - tracking promises made by sellers
-   - documenting issues for disputes
-
-11. `used-refurbished-and-replacement-buying`
-   - verifying condition before purchase
-   - comparing repair vs replacement economics
-   - checking missing accessories / documentation
-   - tracking serial / model details for fit
-
-12. `household-stock-vs-waste-tradeoffs`
-   - overbuying because visibility is poor
-   - buying too little and running out
-   - perishable vs non-perishable planning
-   - storage-capacity-aware shopping decisions
-
----
+- comparison-and-selection
+- size-fit-and-compatibility
+- purchasing-proof-and-records
+- delivery-preorder-and-availability
+- returns-exchanges-and-recovery
+- warranty-claims-and-aftercare
+- recurring-rebuy-and-household-replenishment
+- shared-shopping-and-list-coordination
+- gift-purchasing-and-event-buying
+- marketplace-and-seller-trust
+- used-refurbished-and-replacement-buying
+- household-stock-vs-waste-tradeoffs
 
 ### education
 
-1. `assignments-deadlines-and-submissions`
-   - missing due dates across platforms
-   - attachment / format submission issues
-   - unclear rubric or submission method
-   - late-work exception handling
-
-2. `study-planning-and-exam-prep`
-   - balancing multiple exams
-   - planning review cadence
-   - spotting what has not been covered yet
-   - adjusting after falling behind
-
-3. `notes-materials-and-resource-findability`
-   - scattered class resources
-   - confusion over latest study material
-   - losing access to key notes
-   - organizing material by topic and assessment
-
-4. `group-work-and-collaboration`
-   - task ownership ambiguity
-   - missed handoffs in group projects
-   - version confusion in shared work
-   - contribution evidence during disputes
-
-5. `school-admin-and-family-communication`
-   - parent notices getting lost
-   - permissions / forms / signatures
-   - absence paperwork
-   - event / trip / school-day logistics
-
-6. `applications-admissions-and-enrollment`
-   - application component tracking
-   - recommendation / document collection
-   - enrollment step dependencies
-   - decision / waitlist follow-up
-
-7. `financial-aid-scholarships-and-fees`
-   - scholarship deadline coordination
-   - fee payment proof
-   - document gathering for aid
-   - status opacity in aid processing
-
-8. `accommodations-support-and-special-needs`
-   - arranging accommodations on time
-   - proving eligibility for support
-   - renewing support documentation
-   - coordinating accommodations across courses / systems
-
-9. `attendance-schedule-and-routine-friction`
-   - timetable changes
-   - missed sessions from schedule confusion
-   - balancing travel / work / school constraints
-   - keeping recurring academic routines stable
-
-10. `extracurriculars-clubs-and-activities`
-   - registration windows
-   - schedule conflicts between activities
-   - parent / student / coach coordination
-   - tracking requirements and equipment
-
-11. `certifications-testing-and-registration`
-   - exam registration readiness
-   - external certification prerequisites
-   - test-day document preparation
-   - retake / validity window tracking
-
-12. `feedback-progress-and-intervention`
-   - seeing patterns across teacher feedback
-   - spotting missing or late grades
-   - deciding when support is needed
-   - coordinating remediation or catch-up plans
-
----
+- assignments-deadlines-and-submissions
+- study-planning-and-exam-prep
+- notes-materials-and-resource-findability
+- group-work-and-collaboration
+- school-admin-and-family-communication
+- applications-admissions-and-enrollment
+- financial-aid-scholarships-and-fees
+- accommodations-support-and-special-needs
+- attendance-schedule-and-routine-friction
+- extracurriculars-clubs-and-activities
+- certifications-testing-and-registration
+- feedback-progress-and-intervention
 
 ### family
 
-1. `calendar-coordination-and-conflict-resolution`
-   - overlapping family commitments
-   - last-minute schedule changes
-   - remembering which plan is current
-   - resolving conflicts between priorities
-
-2. `child-activity-and-school-logistics`
-   - pickup / drop-off coordination
-   - equipment / permission / event readiness
-   - rotating responsibilities between adults
-   - handling exceptions and cancellations
-
-3. `caregiving-and-coverage`
-   - elder-care coverage gaps
-   - babysitting / respite coordination
-   - backup care when routines break
-   - transferring care instructions between people
-
-4. `co-parenting-and-multi-household-coordination`
-   - schedule handoffs between homes
-   - document / clothing / equipment transfer
-   - shared decision follow-through
-   - exception handling during travel / sickness
-
-5. `household-decisions-and-memory`
-   - forgetting what was agreed
-   - repeated discussions because decisions are not recorded
-   - keeping rationale for future reference
-   - tracking unresolved family decisions
-
-6. `documents-records-and-official-family-proof`
-   - keeping certificates / IDs / school records organized
-   - retrieving the right record quickly
-   - knowing what must be updated after life changes
-   - preparing family documents for applications or travel
-
-7. `roles-chores-and-responsibility-balance`
-   - uneven invisible labor
-   - unclear ownership of recurring tasks
-   - temporary swaps when someone is unavailable
-   - accountability without over-managing
-
-8. `events-celebrations-and-gift-coordination`
-   - remembering milestones
-   - planning across preferences and budgets
-   - coordinating contributions from multiple relatives
-   - managing post-event cleanup and returns
-
-9. `family-money-and-shared-obligations`
-   - who pays for what in a family context
-   - tracking reimbursements between relatives
-   - budget exceptions for kids / elders / events
-   - aligning spending with family rules
-
-10. `routines-boundaries-and-agreements`
-   - screen-time / bedtime / household-rule consistency
-   - keeping agreements visible
-   - handling exceptions fairly
-   - maintaining routines across caregivers or households
-
-11. `emergency-readiness-and-contact-visibility`
-   - knowing who to reach and when
-   - keeping critical medical / school / contact info current
-   - temporary guardianship / pickup authorizations
-   - emergency plan coordination
-
-12. `intergenerational-support-and-communication`
-   - coordinating help for older relatives
-   - translating / relaying information between generations
-   - remembering preferences and constraints
-   - reducing confusion in multi-person family support
-
----
+- calendar-coordination-and-conflict-resolution
+- child-activity-and-school-logistics
+- caregiving-and-coverage
+- co-parenting-and-multi-household-coordination
+- household-decisions-and-memory
+- documents-records-and-official-family-proof
+- roles-chores-and-responsibility-balance
+- events-celebrations-and-gift-coordination
+- family-money-and-shared-obligations
+- routines-boundaries-and-agreements
+- emergency-readiness-and-contact-visibility
+- intergenerational-support-and-communication
 
 ### food
 
-1. `meal-planning-and-decision-friction`
-   - deciding what to eat under time constraints
-   - matching meals to available ingredients
-   - balancing variety with routine
-   - planning for different schedules in one household
-
-2. `pantry-fridge-and-freezer-visibility`
-   - not knowing what is already at home
-   - duplicate buying
-   - item rotation by freshness
-   - using freezer inventory intentionally
-
-3. `shopping-to-meal-execution`
-   - turning meal ideas into a practical shopping list
-   - substituting missing ingredients
-   - adjusting plans after items are unavailable
-   - syncing purchases with when food will actually be cooked
-
-4. `leftovers-waste-and-expiry-management`
-   - forgetting leftovers
-   - expiring produce / dairy / prepared food
-   - deciding what can still be used
-   - planning meals around high-risk items
-
-5. `dietary-preferences-and-restrictions`
-   - feeding multiple people with different restrictions
-   - allergy / intolerance-safe planning
-   - tracking accepted substitutions
-   - restaurant or guest meal coordination with constraints
-
-6. `school-work-and-on-the-go-food-logistics`
-   - lunch prep for repeated weekdays
-   - snack / meal packing under time pressure
-   - remembering supplies for different routines
-   - coordinating food responsibilities across caregivers
-
-7. `hosting-guests-and-events`
-   - planning menus for mixed preferences
-   - timing prep across many dishes
-   - scaling quantities
-   - tracking what guests are bringing
-
-8. `batch-cooking-and-replenishment`
-   - planning what to cook in bulk
-   - portioning and labeling
-   - knowing when to restock staples
-   - syncing prep with freezer capacity and household demand
-
-9. `restaurant-takeout-and-order-accuracy`
-   - choosing among options quickly
-   - remembering repeat preferences
-   - checking order completeness / correctness
-   - coordinating group ordering without confusion
-
-10. `cost-vs-convenience-tradeoffs`
-   - deciding when convenience is worth paying for
-   - comparing homemade vs store-bought paths
-   - balancing healthy intent with time reality
-   - making budget-aware food choices without constant recalculation
-
-11. `nutrition-and-routine-consistency`
-   - maintaining a simple eating routine
-   - spotting skipped meals / patterns
-   - coordinating food with activity / school / work constraints
-   - keeping tracking lightweight enough to sustain
-
-12. `holiday-seasonal-and-special-occasion-food`
-   - special menu planning
-   - ingredient sourcing for limited-time items
-   - timing prep around traditions or guests
-   - managing leftovers and storage after big meals
-
----
+- meal-planning-and-decision-friction
+- pantry-fridge-and-freezer-visibility
+- shopping-to-meal-execution
+- leftovers-waste-and-expiry-management
+- dietary-preferences-and-restrictions
+- school-work-and-on-the-go-food-logistics
+- hosting-guests-and-events
+- batch-cooking-and-replenishment
+- restaurant-takeout-and-order-accuracy
+- cost-vs-convenience-tradeoffs
+- nutrition-and-routine-consistency
+- holiday-seasonal-and-special-occasion-food
 
 ### security-privacy
 
-1. `passwords-credentials-and-access-readiness`
-   - keeping account access recoverable
-   - tracking where credentials matter most
-   - rotating weak or reused credentials
-   - preparing trusted access for emergencies
-
-2. `account-recovery-and-lockout-prevention`
-   - backup code readiness
-   - recovery method drift after phone/email changes
-   - proving account ownership during recovery
-   - family or team recovery handoff planning
-
-3. `device-update-and-protection-drift`
-   - delayed updates across many devices
-   - unclear protection status
-   - coordinating updates for less technical family members
-   - reducing disruption while staying current
-
-4. `phishing-scams-and-suspicious-contact-triage`
-   - suspicious SMS / calls / emails
-   - deciding what is safe to ignore or escalate
-   - keeping proof of incidents
-   - helping family members handle suspicious contact safely
-
-5. `identity-theft-and-post-incident-recovery`
-   - response steps after suspected compromise
-   - documenting what was affected
-   - tracking notifications / freezes / follow-up
-   - coordinating recovery across multiple services
-
-6. `privacy-settings-and-data-exposure`
-   - checking high-risk privacy settings
-   - visibility drift after app / platform changes
-   - understanding what is publicly exposed
-   - maintaining a lightweight review routine
-
-7. `secure-document-sharing-and-redaction`
-   - sending sensitive documents safely
-   - sharing only the necessary fields
-   - keeping an audit trail of what was shared
-   - reusing safe redaction / sharing practices
-
-8. `permissions-and-shared-access-review`
-   - who has access to what
-   - stale shared access
-   - family / team admin roles getting messy
-   - periodic review of delegated permissions
-
-9. `backup-readiness-and-restoration-confidence`
-   - not knowing what is actually backed up
-   - missing important categories of data
-   - restoration uncertainty before a real incident
-   - scheduling lightweight checks
-
-10. `device-handover-resale-and-offboarding`
-   - preparing devices for sale / transfer
-   - removing accounts and personal data fully
-   - tracking accessories / serial numbers / reset status
-   - handing a device to a relative safely
-
-11. `child-elder-and-dependent-digital-safety`
-   - helping less technical users stay safe
-   - keeping guidance simple and repeatable
-   - balancing oversight with autonomy
-   - coordinating safety settings across caregivers
-
-12. `privacy-rights-and-follow-up-requests`
-   - requesting data deletion / export
-   - tracking responses from companies
-   - proving the request scope and timing
-   - following up when the process stalls
-
----
+- passwords-credentials-and-access-readiness
+- account-recovery-and-lockout-prevention
+- device-update-and-protection-drift
+- phishing-scams-and-suspicious-contact-triage
+- identity-theft-and-post-incident-recovery
+- privacy-settings-and-data-exposure
+- secure-document-sharing-and-redaction
+- permissions-and-shared-access-review
+- backup-readiness-and-restoration-confidence
+- device-handover-resale-and-offboarding
+- child-elder-and-dependent-digital-safety
+- privacy-rights-and-follow-up-requests
 
 ### travel
 
-1. `pre-departure-readiness`
-   - packing by trip type
-   - departure checklist timing
-   - last-mile prep before leaving home
-   - avoiding forgotten essentials for early departures
-
-2. `documents-visas-and-entry-requirements`
-   - passport / visa readiness
-   - destination-specific entry rule verification
-   - family document dependencies
-   - gathering supporting proof for travel admin
-
-3. `bookings-itinerary-and-confirmation-findability`
-   - scattered reservations
-   - version confusion after changes
-   - keeping one usable itinerary view
-   - retrieving key confirmations quickly during travel
-
-4. `changes-cancellations-and-rebooking-recovery`
-   - missed or changed connections
-   - cancellation follow-up
-   - choosing among rebooking options under pressure
-   - keeping commitments aligned after travel disruption
-
-5. `airport-station-and-local-transfer-coordination`
-   - first / last mile planning
-   - transfer timing uncertainty
-   - multi-person arrival coordination
-   - backup options when transport fails
-
-6. `lodging-stay-and-check-in-friction`
-   - check-in instructions buried in messages
-   - arrival-time coordination
-   - exceptions or issues during the stay
-   - proving what was promised vs delivered
-
-7. `trip-money-expenses-and-reimbursement`
-   - splitting travel costs
-   - keeping receipts for work or shared trips
-   - expense categorization while moving
-   - reimbursement follow-up after return
-
-8. `insurance-claims-and-compensation`
-   - deciding when a travel issue is claim-worthy
-   - collecting proof during disruption
-   - tracking claim steps after the trip
-   - compensation follow-up with airlines / providers
-
-9. `group-travel-and-role-coordination`
-   - keeping everyone aligned on timing
-   - task division across travelers
-   - handling partial plan changes for one person
-   - reducing repeated coordination messages
-
-10. `health-accessibility-and-special-needs-travel`
-   - medication / equipment readiness
-   - accessibility constraints in itinerary choices
-   - planning around rest, food, or care routines
-   - keeping essential support details accessible during travel
-
-11. `lost-items-baggage-and-recovery`
-   - baggage status uncertainty
-   - lost item reporting and proof
-   - deciding what to replace immediately
-   - coordinating pickup / return after recovery
-
-12. `post-trip-cleanup-and-follow-through`
-   - expense and receipt cleanup
-   - returning borrowed / rented items
-   - organizing photos / documents / leftover credits
-   - wrapping unresolved travel admin after arrival home
+- pre-departure-readiness
+- documents-visas-and-entry-requirements
+- bookings-itinerary-and-confirmation-findability
+- changes-cancellations-and-rebooking-recovery
+- airport-station-and-local-transfer-coordination
+- lodging-stay-and-check-in-friction
+- trip-money-expenses-and-reimbursement
+- insurance-claims-and-compensation
+- group-travel-and-role-coordination
+- health-accessibility-and-special-needs-travel
+- lost-items-baggage-and-recovery
+- post-trip-cleanup-and-follow-through
