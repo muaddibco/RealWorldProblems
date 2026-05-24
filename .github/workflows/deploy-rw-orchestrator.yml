@@ -109,4 +109,5 @@ jobs:
           azd env set SCAN_BATCH_SIZE "$SCAN_BATCH_SIZE"
           azd env set SCAN_STAGE_ORDER "$SCAN_STAGE_ORDER"
 
-          azd up --no-prompt
+          azd provision --no-prompt
+          azd deploy --no-prompt
