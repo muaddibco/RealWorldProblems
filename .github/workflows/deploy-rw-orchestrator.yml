@@ -40,7 +40,7 @@ jobs:
       AZURE_LOCATION: ${{ inputs.location || 'eastus' }}
       GITHUB_OWNER: ${{ github.repository_owner }}
       GITHUB_REPO: ${{ github.event.repository.name }}
-      GITHUB_WORKFLOW_REF: main
+      RW_WORKFLOW_DISPATCH_REF: main
       SCAN_BATCH_SIZE: '10'
       SCAN_STAGE_ORDER: stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation
 
@@ -104,7 +104,7 @@ jobs:
           azd env set AZURE_LOCATION "$AZURE_LOCATION"
           azd env set GITHUB_OWNER "$GITHUB_OWNER"
           azd env set GITHUB_REPO "$GITHUB_REPO"
-          azd env set GITHUB_WORKFLOW_REF "$GITHUB_WORKFLOW_REF"
+          azd env set RW_WORKFLOW_DISPATCH_REF "$RW_WORKFLOW_DISPATCH_REF"
           azd env set GITHUB_TOKEN "$RW_GITHUB_TOKEN"
           azd env set GITHUB_WEBHOOK_SECRET "$RW_GITHUB_WEBHOOK_SECRET"
           azd env set SCAN_BATCH_SIZE "$SCAN_BATCH_SIZE"

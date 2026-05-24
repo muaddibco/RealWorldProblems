@@ -15,7 +15,7 @@
       "value": "${GITHUB_REPO}"
     },
     "githubWorkflowRef": {
-      "value": "${GITHUB_WORKFLOW_REF}"
+      "value": "${RW_WORKFLOW_DISPATCH_REF}"
     },
     "scanBatchSize": {
       "value": "${SCAN_BATCH_SIZE}"

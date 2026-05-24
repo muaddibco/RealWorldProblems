@@ -107,7 +107,7 @@ df.app.activity("DispatchWorkflowActivity", {
     orchestrationId: string;
   }) => {
     const github = await GitHubClient.create();
-    const ref = process.env.GITHUB_WORKFLOW_REF ?? "main";
+    const ref = process.env.RW_WORKFLOW_DISPATCH_REF ?? "main";
     const cooldownMs = getDispatchCooldownMs();
 
     if (cooldownMs > 0) {

@@ -199,7 +199,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
           value: githubRepo
         }
         {
-          name: 'GITHUB_WORKFLOW_REF'
+          name: 'RW_WORKFLOW_DISPATCH_REF'
           value: githubWorkflowRef
         }
         {
