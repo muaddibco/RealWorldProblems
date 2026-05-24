@@ -153,7 +153,7 @@ df.app.client.http("githubWebhook", {
       if (event === "issues") {
         const action = typeof payload.action === "string" ? payload.action : "";
         const labelName = ((payload.label as Record<string, unknown> | undefined)?.name as string) ?? "";
-        context.info(`Processing issues event: delivery=${deliveryId} action=${action || "missing"} label=${labelName || "none"}`);
+        context.info(`Processing issues event: label=${labelName || "none"} delivery=${deliveryId} action=${action || "missing"}`);
         const shouldProceed =
           (action === "labeled" && STAGE_LABELS.has(labelName)) ||
           (action === "unlabeled" && (labelName === "status/needs-info" || labelName === "status/orchestration-failed"));
@@ -161,13 +161,15 @@ df.app.client.http("githubWebhook", {
         if (!shouldProceed) {
           if (action === "labeled" || action === "unlabeled") {
             context.info(
-              `Ignoring issues event due to unsupported label transition: delivery=${deliveryId} action=${action} label=${labelName}`
+              `Ignoring issues event due to unsupported label transition: label=${labelName || "none"} delivery=${deliveryId} action=${action || "missing"}`
             );
             return accepted({ ignored: true, reason: `issues action on unsupported label: ${action} ${labelName}` });
           }
-          context.info(`Ignoring issues event due to unsupported action: delivery=${deliveryId} action=${action || "missing"}`);
+          context.info(`Ignoring issues event due to unsupported action: label=${labelName || "none"} delivery=${deliveryId} action=${action || "missing"}`);
           return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
         }
+
+        context.info(`Proceeding with issues event processing: label=${labelName} delivery=${deliveryId} action=${action}`);  
 
         const repository = payload.repository as Record<string, unknown> | undefined;
         const issue = payload.issue as Record<string, unknown> | undefined;
