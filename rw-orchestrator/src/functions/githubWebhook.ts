@@ -90,11 +90,14 @@ df.app.client.http("githubWebhook", {
   authLevel: "function",
   handler: async (request: HttpRequest, client: df.DurableClient, context: InvocationContext) => {
     try {
+      const deliveryId = request.headers.get("x-github-delivery") ?? "missing";
+      const eventHeader = request.headers.get("x-github-event") ?? "missing";
       context.info(
-        `githubWebhook invoked: method=${request.method} url=${request.url} event=${request.headers.get("x-github-event") ?? "missing"} delivery=${request.headers.get("x-github-delivery") ?? "missing"}`
+        `githubWebhook invoked: method=${request.method} url=${request.url} event=${eventHeader} delivery=${deliveryId}`
       );
 
       if (request.method === "GET" || request.query.get("mode") === "version") {
+        context.info(`Version probe request served: delivery=${deliveryId} mode=${request.query.get("mode") ?? "none"}`);
         return jsonResponse(200, {
           mode: "version",
           function: "githubWebhook"
@@ -123,33 +126,53 @@ df.app.client.http("githubWebhook", {
           error: "Invalid signature"
         });
       }
+      context.info(`Webhook signature validated successfully for delivery=${deliveryId}`);
 
       const event = request.headers.get("x-github-event");
       if (!event) {
+        context.warn(`Missing x-github-event header for delivery=${deliveryId}`);
         return jsonResponse(400, {
           error: "Missing x-github-event header"
         });
       }
 
-      const payload = JSON.parse(rawBody) as Record<string, unknown>;
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(rawBody) as Record<string, unknown>;
+      } catch (error: unknown) {
+        context.warn(
+          `Failed to parse webhook JSON: delivery=${deliveryId} event=${event} error=${error instanceof Error ? error.message : String(error)}`
+        );
+        return jsonResponse(400, {
+          error: "Invalid JSON payload"
+        });
+      }
+
+      context.info(`Webhook payload parsed: delivery=${deliveryId} event=${event}`);
 
       if (event === "issues") {
         const action = typeof payload.action === "string" ? payload.action : "";
         const labelName = ((payload.label as Record<string, unknown> | undefined)?.name as string) ?? "";
+        context.info(`Processing issues event: delivery=${deliveryId} action=${action || "missing"} label=${labelName || "none"}`);
         const shouldProceed =
           (action === "labeled" && STAGE_LABELS.has(labelName)) ||
           (action === "unlabeled" && (labelName === "status/needs-info" || labelName === "status/orchestration-failed"));
 
         if (!shouldProceed) {
           if (action === "labeled" || action === "unlabeled") {
+            context.info(
+              `Ignoring issues event due to unsupported label transition: delivery=${deliveryId} action=${action} label=${labelName}`
+            );
             return accepted({ ignored: true, reason: `issues action on unsupported label: ${action} ${labelName}` });
           }
+          context.info(`Ignoring issues event due to unsupported action: delivery=${deliveryId} action=${action || "missing"}`);
           return accepted({ ignored: true, reason: `unsupported issues action: ${action}` });
         }
 
         const repository = payload.repository as Record<string, unknown> | undefined;
         const issue = payload.issue as Record<string, unknown> | undefined;
         if (!repository || !issue) {
+          context.warn(`Issues payload missing repository or issue object: delivery=${deliveryId}`);
           return accepted({ ignored: true, reason: "missing repository/issue payload" });
         }
 
@@ -159,19 +182,29 @@ df.app.client.http("githubWebhook", {
         const { owner: expectedOwner, repo: expectedRepo } = getRepoConfig();
 
         if (!owner || !repo || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+          context.warn(
+            `Invalid issue identity in webhook payload: delivery=${deliveryId} owner=${owner || "missing"} repo=${repo || "missing"} issueNumber=${String(issueNumber)}`
+          );
           return accepted({ ignored: true, reason: "invalid issue identity" });
         }
 
         if (owner !== expectedOwner || repo !== expectedRepo) {
+          context.info(
+            `Ignoring issues event for non-target repo: delivery=${deliveryId} received=${owner}/${repo} expected=${expectedOwner}/${expectedRepo}`
+          );
           return accepted({ ignored: true, reason: "repository not configured target" });
         }
 
         const instanceId = issueInstanceId(owner, repo, issueNumber);
         const existing = await getStatusIfExists(client, instanceId, context);
         if (existing && isActiveStatus(existing.runtimeStatus)) {
+          context.info(
+            `Orchestration already active; skipping start: delivery=${deliveryId} instanceId=${instanceId} status=${existing.runtimeStatus}`
+          );
           return accepted({ status: "already-running", instanceId });
         }
 
+        context.info(`Starting IssuePipelineOrchestrator from issues event: delivery=${deliveryId} instanceId=${instanceId}`);
         await client.startNew("IssuePipelineOrchestrator", {
           instanceId,
           input: {
@@ -182,17 +215,21 @@ df.app.client.http("githubWebhook", {
           }
         });
 
+        context.info(`IssuePipelineOrchestrator started: delivery=${deliveryId} instanceId=${instanceId}`);
         return accepted({ status: "started", instanceId });
       }
 
       if (event === "workflow_run") {
         const action = typeof payload.action === "string" ? payload.action : "";
+        context.info(`Processing workflow_run event: delivery=${deliveryId} action=${action || "missing"}`);
         if (action !== "completed") {
+          context.info(`Ignoring workflow_run event with unsupported action: delivery=${deliveryId} action=${action || "missing"}`);
           return accepted({ ignored: true, reason: `unsupported workflow_run action: ${action}` });
         }
 
         const repository = payload.repository as Record<string, unknown> | undefined;
         if (!repository) {
+          context.warn(`workflow_run payload missing repository object: delivery=${deliveryId}`);
           return accepted({ ignored: true, reason: "missing repository payload" });
         }
 
@@ -201,14 +238,22 @@ df.app.client.http("githubWebhook", {
         const { owner: expectedOwner, repo: expectedRepo } = getRepoConfig();
 
         if (owner !== expectedOwner || repo !== expectedRepo) {
+          context.info(
+            `Ignoring workflow_run for non-target repo: delivery=${deliveryId} received=${owner}/${repo} expected=${expectedOwner}/${expectedRepo}`
+          );
           return accepted({ ignored: true, reason: "repository not configured target" });
         }
 
         const completion = extractWorkflowCompletion(payload);
 
         if (!completion) {
+          context.info(`Unable to correlate workflow_run completion to issue: delivery=${deliveryId}`);
           return accepted({ ignored: true, reason: "could not correlate workflow run to issue" });
         }
+
+        context.info(
+          `Workflow completion correlated: delivery=${deliveryId} issueNumber=${completion.issueNumber} runId=${completion.workflowRunId} conclusion=${completion.conclusion}`
+        );
 
         const instanceId = issueInstanceId(owner, repo, completion.issueNumber);
         const existing = await getStatusIfExists(client, instanceId, context);
@@ -218,6 +263,7 @@ df.app.client.http("githubWebhook", {
         }
 
         try {
+          context.info(`Raising workflowCompleted event: delivery=${deliveryId} instanceId=${instanceId} runId=${completion.workflowRunId}`);
           await client.raiseEvent(instanceId, "workflowCompleted", {
             workflowRunId: completion.workflowRunId,
             conclusion: completion.conclusion,
@@ -228,9 +274,11 @@ df.app.client.http("githubWebhook", {
           return accepted({ ignored: true, reason: "failed to deliver workflow completion", instanceId });
         }
 
+        context.info(`workflowCompleted event raised successfully: delivery=${deliveryId} instanceId=${instanceId}`);
         return accepted({ status: "event-raised", instanceId });
       }
 
+      context.info(`Ignoring unsupported GitHub event: delivery=${deliveryId} event=${event}`);
       return accepted({ ignored: true, reason: `unsupported event: ${event}` });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
