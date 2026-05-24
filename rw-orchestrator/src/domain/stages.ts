@@ -2,6 +2,16 @@ import { StageDefinition } from "./types";
 
 export const STAGES: StageDefinition[] = [
   {
+    id: "evidence-enrich",
+    stageLabel: "stage/0-evidence",
+    requiredLabels: ["type/problem", "stage/0-evidence"],
+    forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
+    workflowId: "05-evidence-enrich.lock.yml",
+    expectedNextLabels: ["stage/0-intake", "status/needs-info"],
+    timeoutMinutes: 15,
+    terminalLabels: ["status/needs-info"]
+  },
+  {
     id: "normalize",
     stageLabel: "stage/0-intake",
     requiredLabels: ["type/problem", "stage/0-intake"],
@@ -26,8 +36,18 @@ export const STAGES: StageDefinition[] = [
     requiredLabels: ["type/problem", "stage/2-deduped"],
     forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
     workflowId: "30-software-fit.lock.yml",
-    expectedNextLabels: ["stage/3-scored", "stage/9-archived"],
+    expectedNextLabels: ["stage/2.5-country-validation", "stage/3-scored", "stage/9-archived"],
     timeoutMinutes: 15
+  },
+  {
+    id: "country-validation",
+    stageLabel: "stage/2.5-country-validation",
+    requiredLabels: ["type/problem", "stage/2.5-country-validation"],
+    forbiddenLabels: ["agentic-workflows", "rw/processing", "stage/9-archived"],
+    workflowId: "35-country-validation.lock.yml",
+    expectedNextLabels: ["stage/3-scored", "status/needs-info"],
+    timeoutMinutes: 15,
+    terminalLabels: ["status/needs-info"]
   },
   {
     id: "score",

@@ -1,7 +1,9 @@
 export type PipelineStageId =
+  | "evidence-enrich"
   | "normalize"
   | "dedupe"
   | "software-fit"
+  | "country-validation"
   | "score"
   | "solution"
   | "ai-defensibility"

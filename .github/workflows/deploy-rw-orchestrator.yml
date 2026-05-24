@@ -1,0 +1,85 @@
+name: Deploy rw-orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      azd_environment:
+        description: azd environment name
+        required: false
+        default: dev
+      location:
+        description: Azure location
+        required: false
+        default: eastus
+  push:
+    branches:
+      - main
+    paths:
+      - rw-orchestrator/**
+      - .github/workflows/deploy-rw-orchestrator.yml
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-rw-orchestrator-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AZD_ENVIRONMENT: ${{ inputs.azd_environment || 'dev' }}
+      AZURE_LOCATION: ${{ inputs.location || 'eastus' }}
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_REPO: ${{ github.event.repository.name }}
+      GITHUB_WORKFLOW_REF: main
+      SCAN_BATCH_SIZE: '10'
+      SCAN_STAGE_ORDER: stage/0-intake,stage/1-normalized,stage/2-deduped,stage/3-scored,stage/4-solution,stage/ai-defensibility,stage/5-competitors,stage/6-shortlist,stage/7-validation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup azd
+        uses: Azure/setup-azd@v2
+
+      - name: Deploy rw-orchestrator with azd
+        shell: bash
+        working-directory: rw-orchestrator
+        env:
+          RW_GITHUB_TOKEN: ${{ secrets.RW_ORCHESTRATOR_GITHUB_TOKEN }}
+          RW_GITHUB_WEBHOOK_SECRET: ${{ secrets.RW_ORCHESTRATOR_GITHUB_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RW_GITHUB_TOKEN:-}" ]]; then
+            echo "Missing required secret: RW_ORCHESTRATOR_GITHUB_TOKEN"
+            exit 1
+          fi
+
+          if [[ -z "${RW_GITHUB_WEBHOOK_SECRET:-}" ]]; then
+            echo "Missing required secret: RW_ORCHESTRATOR_GITHUB_WEBHOOK_SECRET"
+            exit 1
+          fi
+
+          azd env select "$AZD_ENVIRONMENT" || azd env new "$AZD_ENVIRONMENT" --no-prompt
+
+          azd env set AZURE_LOCATION "$AZURE_LOCATION"
+          azd env set GITHUB_OWNER "$GITHUB_OWNER"
+          azd env set GITHUB_REPO "$GITHUB_REPO"
+          azd env set GITHUB_WORKFLOW_REF "$GITHUB_WORKFLOW_REF"
+          azd env set GITHUB_TOKEN "$RW_GITHUB_TOKEN"
+          azd env set GITHUB_WEBHOOK_SECRET "$RW_GITHUB_WEBHOOK_SECRET"
+          azd env set SCAN_BATCH_SIZE "$SCAN_BATCH_SIZE"
+          azd env set SCAN_STAGE_ORDER "$SCAN_STAGE_ORDER"
+
+          azd up --no-prompt

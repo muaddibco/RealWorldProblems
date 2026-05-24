@@ -3,7 +3,8 @@
  * E2E tests for multi-stage orchestration
  *
  * Scenarios covered:
- * - Multi-Stage Happy Path: Issue progresses through normalize → dedupe → software-fit
+ * - Multi-Stage Happy Path: Issue progresses through evidence-enrich → normalize → dedupe → software-fit
+ * - Country-gated Path: Issue progresses through software-fit → country-validation → score
  * - Partial Multi-Stage: Stops at terminal label before reaching next stage
  */
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -19,17 +20,48 @@ describe("Multi-Stage Orchestration E2E", () => {
     afterEach(() => {
         mockGitHub.reset();
     });
-    describe("Multi-Stage Happy Path: normalize → dedupe → software-fit", () => {
-        it("should progress through all three stages with successful transitions", async () => {
+    describe("Multi-Stage Happy Path: evidence-enrich → normalize → dedupe → software-fit", () => {
+        it("should progress through all four stages with successful transitions", async () => {
             const issueNumber = 50;
-            let issue = (0, github_payloads_1.createIssueWithLabels)(issueNumber, ["type/problem", "stage/0-intake"]);
+            let issue = (0, github_payloads_1.createIssueWithLabels)(issueNumber, ["type/problem", "stage/0-evidence"]);
             mockGitHub.setIssue(issue);
-            // ========== STAGE 1: NORMALIZE ==========
-            console.log("=== STAGE 1: NORMALIZE ===");
+            // ========== STAGE 1: EVIDENCE ENRICH ==========
+            console.log("=== STAGE 1: EVIDENCE ENRICH ===");
             // Get issue
             let retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
             let stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
+            expect(stage?.id).toBe("evidence-enrich");
+            // Claim
+            await mockGitHub.addLabels("owner", "repo", issueNumber, [
+                "rw/processing",
+                "rw/stage-evidence-enrich"
+            ]);
+            // Dispatch
+            await mockGitHub.dispatchWorkflow({
+                owner: "owner",
+                repo: "repo",
+                workflowId: stage.workflowId,
+                ref: "main",
+                inputs: { issue_number: String(issueNumber), orchestration_id: "test-1" }
+            });
+            // Workflow completes - transition to stage/0-intake
+            issue = (0, github_payloads_1.createIssuePayload)(issueNumber, ["type/problem", "stage/0-intake", "rw/processing", "rw/stage-evidence-enrich"], "# Problem with evidence");
+            mockGitHub.setIssue(issue);
+            // Verify transition
+            retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            let evidenceStage = stages_1.STAGES.find((s) => s.id === "evidence-enrich");
+            let hasExpected = evidenceStage.expectedNextLabels.some((label) => retrieved.labels.some((l) => l.name === label));
+            expect(hasExpected).toBe(true);
+            // Release
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/processing");
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/stage-evidence-enrich");
+            // ========== STAGE 2: NORMALIZE ==========
+            console.log("=== STAGE 2: NORMALIZE ===");
+            // Orchestration loops - decide next stage
+            retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
             expect(stage?.id).toBe("normalize");
+            expect(stage?.stageLabel).toBe("stage/0-intake");
             // Claim
             await mockGitHub.addLabels("owner", "repo", issueNumber, [
                 "rw/processing",
@@ -49,13 +81,13 @@ describe("Multi-Stage Orchestration E2E", () => {
             // Verify transition
             retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
             let normalizeStage = stages_1.STAGES.find((s) => s.id === "normalize");
-            let hasExpected = normalizeStage.expectedNextLabels.some((label) => retrieved.labels.some((l) => l.name === label));
+            hasExpected = normalizeStage.expectedNextLabels.some((label) => retrieved.labels.some((l) => l.name === label));
             expect(hasExpected).toBe(true);
             // Release
             await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/processing");
             await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/stage-normalize");
-            // ========== STAGE 2: DEDUPE ==========
-            console.log("=== STAGE 2: DEDUPE ===");
+            // ========== STAGE 3: DEDUPE ==========
+            console.log("=== STAGE 3: DEDUPE ===");
             // Orchestration loops - decide next stage
             retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
             stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
@@ -85,8 +117,8 @@ describe("Multi-Stage Orchestration E2E", () => {
             // Release
             await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/processing");
             await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/stage-dedupe");
-            // ========== STAGE 3: SOFTWARE-FIT ==========
-            console.log("=== STAGE 3: SOFTWARE-FIT ===");
+            // ========== STAGE 4: SOFTWARE-FIT ==========
+            console.log("=== STAGE 4: SOFTWARE-FIT ===");
             // Orchestration loops - decide next stage
             retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
             stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
@@ -119,19 +151,89 @@ describe("Multi-Stage Orchestration E2E", () => {
             // ========== VERIFY MULTI-STAGE PROGRESS ==========
             retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
             const finalLabels = retrieved.labels.map((l) => l.name);
-            // Verify all three stages were transitioned through
+            // Verify all four stages were transitioned through
             expect(finalLabels).toContain("stage/3-scored");
             expect(finalLabels).toContain("software-fit/yes");
+            expect(finalLabels).not.toContain("stage/0-evidence");
             expect(finalLabels).not.toContain("stage/0-intake");
             expect(finalLabels).not.toContain("stage/1-normalized");
             expect(finalLabels).not.toContain("stage/2-deduped");
             expect(finalLabels).not.toContain("rw/processing");
             // Verify dispatch count
             const dispatched = mockGitHub.getDispatchedWorkflows();
-            expect(dispatched).toHaveLength(3);
-            expect(dispatched[0].workflowId).toBe("10-normalize.lock.yml");
-            expect(dispatched[1].workflowId).toBe("20-dedupe.lock.yml");
-            expect(dispatched[2].workflowId).toBe("30-software-fit.lock.yml");
+            expect(dispatched).toHaveLength(4);
+            expect(dispatched[0].workflowId).toBe("05-evidence-enrich.lock.yml");
+            expect(dispatched[1].workflowId).toBe("10-normalize.lock.yml");
+            expect(dispatched[2].workflowId).toBe("20-dedupe.lock.yml");
+            expect(dispatched[3].workflowId).toBe("30-software-fit.lock.yml");
+        });
+    });
+    describe("Country-gated Path: software-fit → country-validation → score", () => {
+        it("should route country-dependent issues through the country validation gate before scoring", async () => {
+            const issueNumber = 52;
+            let issue = (0, github_payloads_1.createIssueWithLabels)(issueNumber, ["type/problem", "stage/2-deduped"]);
+            mockGitHub.setIssue(issue);
+            let retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            let stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
+            expect(stage?.id).toBe("software-fit");
+            await mockGitHub.addLabels("owner", "repo", issueNumber, [
+                "rw/processing",
+                "rw/stage-software-fit"
+            ]);
+            await mockGitHub.dispatchWorkflow({
+                owner: "owner",
+                repo: "repo",
+                workflowId: stage.workflowId,
+                ref: "main",
+                inputs: { issue_number: String(issueNumber), orchestration_id: "test-country-gate" }
+            });
+            issue = (0, github_payloads_1.createIssuePayload)(issueNumber, [
+                "type/problem",
+                "stage/2.5-country-validation",
+                "software-fit/partial",
+                "rw/processing",
+                "rw/stage-software-fit"
+            ], "# Problem\n\n<!-- rw:software-fit:start -->\nRouting after software fit: country-validation-required\n<!-- rw:software-fit:end -->");
+            mockGitHub.setIssue(issue);
+            retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            let fitStage = stages_1.STAGES.find((s) => s.id === "software-fit");
+            let hasExpected = fitStage.expectedNextLabels.some((label) => retrieved.labels.some((l) => l.name === label));
+            expect(hasExpected).toBe(true);
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/processing");
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/stage-software-fit");
+            retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            stage = (0, stageDecision_1.decideNextStage)(retrieved, stages_1.STAGES);
+            expect(stage?.id).toBe("country-validation");
+            expect(stage?.stageLabel).toBe("stage/2.5-country-validation");
+            await mockGitHub.addLabels("owner", "repo", issueNumber, [
+                "rw/processing",
+                "rw/stage-country-validation"
+            ]);
+            await mockGitHub.dispatchWorkflow({
+                owner: "owner",
+                repo: "repo",
+                workflowId: stage.workflowId,
+                ref: "main",
+                inputs: { issue_number: String(issueNumber), orchestration_id: "test-country-gate" }
+            });
+            issue = (0, github_payloads_1.createIssuePayload)(issueNumber, [
+                "type/problem",
+                "stage/3-scored",
+                "software-fit/partial",
+                "rw/processing",
+                "rw/stage-country-validation"
+            ], "# Problem\n\n<!-- rw:country-validation:start -->\nGate status: satisfied\n<!-- rw:country-validation:end -->");
+            mockGitHub.setIssue(issue);
+            retrieved = await mockGitHub.getIssue("owner", "repo", issueNumber);
+            const countryValidationStage = stages_1.STAGES.find((s) => s.id === "country-validation");
+            hasExpected = countryValidationStage.expectedNextLabels.some((label) => retrieved.labels.some((l) => l.name === label));
+            expect(hasExpected).toBe(true);
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/processing");
+            await mockGitHub.removeLabelIfExists("owner", "repo", issueNumber, "rw/stage-country-validation");
+            const dispatched = mockGitHub.getDispatchedWorkflows();
+            expect(dispatched).toHaveLength(2);
+            expect(dispatched[0].workflowId).toBe("30-software-fit.lock.yml");
+            expect(dispatched[1].workflowId).toBe("35-country-validation.lock.yml");
         });
     });
     describe("Partial Multi-Stage: Early Terminal at Stage 2", () => {

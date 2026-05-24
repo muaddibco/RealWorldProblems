@@ -2,8 +2,10 @@
  * E2E tests for single-stage orchestration
  * 
  * Scenarios covered:
+ * - Happy Path 0a: evidence-enrich stage → dispatch succeeds → transition to stage/0-intake
  * - Happy Path 1a: normalize stage → dispatch succeeds → transition to stage/1-normalized
  * - Happy Path 1b: normalize stage → terminal label (status/needs-info)
+ * - Happy Path 3a: country-validation stage → terminal label (status/needs-info)
  * - Happy Path 1c: any stage → archive (stage/9-archived)
  */
 
@@ -24,6 +26,38 @@ describe("Single-Stage Orchestration E2E", () => {
 
   afterEach(() => {
     mockGitHub.reset();
+  });
+
+  describe("Happy Path 0a: Evidence Enrich Stage → Advance to stage/0-intake", () => {
+    it("should progress from stage/0-evidence to stage/0-intake", async () => {
+      const initialIssue = createIssueWithLabels(41, ["type/problem", "stage/0-evidence"]);
+      mockGitHub.setIssue(initialIssue);
+
+      const retrieved = await mockGitHub.getIssue("owner", "repo", 41);
+      const stage = decideNextStage(retrieved, STAGES);
+
+      expect(stage).not.toBeNull();
+      expect(stage?.id).toBe("evidence-enrich");
+      expect(stage?.stageLabel).toBe("stage/0-evidence");
+      expect(stage?.workflowId).toBe("05-evidence-enrich.lock.yml");
+
+      const updatedIssue = createIssuePayload(
+        41,
+        ["type/problem", "stage/0-intake", "rw/processing", "rw/stage-evidence-enrich"],
+        null,
+        "Test Issue"
+      );
+      mockGitHub.setIssue(updatedIssue);
+
+      const verified = await mockGitHub.getIssue("owner", "repo", 41);
+      const expectedLabels = stage!.expectedNextLabels;
+      const hasExpected = expectedLabels.some((label) =>
+        verified.labels.some((l) => l.name === label)
+      );
+
+      expect(hasExpected).toBe(true);
+      expect(verified.labels).toContainEqual({ name: "stage/0-intake" });
+    });
   });
 
   describe("Happy Path 1a: Normalize Stage → Advance to stage/1-normalized", () => {
@@ -166,6 +200,37 @@ describe("Single-Stage Orchestration E2E", () => {
       expect(isArchived).toBe(true);
 
       // Step 5: Next stage decision returns null (terminal)
+      const nextStage = decideNextStage(verified, STAGES);
+      expect(nextStage).toBeNull();
+    });
+  });
+
+  describe("Happy Path 3a: Country Validation → Terminal (status/needs-info)", () => {
+    it("should treat a country-validation hold as a terminal successful outcome", async () => {
+      const initialIssue = createIssueWithLabels(49, ["type/problem", "stage/2.5-country-validation"]);
+      mockGitHub.setIssue(initialIssue);
+
+      const retrieved = await mockGitHub.getIssue("owner", "repo", 49);
+      const stage = decideNextStage(retrieved, STAGES);
+      expect(stage?.id).toBe("country-validation");
+
+      const terminatedIssue = createIssuePayload(
+        49,
+        ["type/problem", "stage/2.5-country-validation", "status/needs-info", "rw/processing"],
+        null
+      );
+      mockGitHub.setIssue(terminatedIssue);
+
+      const verified = await mockGitHub.getIssue("owner", "repo", 49);
+      const countryValidationStage = STAGES.find((s) => s.id === "country-validation")!;
+      const hasExpected = countryValidationStage.expectedNextLabels.some((label) =>
+        verified.labels.some((l) => l.name === label)
+      );
+
+      expect(hasExpected).toBe(true);
+      expect(countryValidationStage.terminalLabels).toContain("status/needs-info");
+      expect(verified.labels).toContainEqual({ name: "status/needs-info" });
+
       const nextStage = decideNextStage(verified, STAGES);
       expect(nextStage).toBeNull();
     });
