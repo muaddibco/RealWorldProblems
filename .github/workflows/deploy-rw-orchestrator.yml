@@ -30,6 +30,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
       AZD_ENVIRONMENT: ${{ inputs.azd_environment || 'dev' }}
       AZURE_LOCATION: ${{ inputs.location || 'eastus' }}
       GITHUB_OWNER: ${{ github.repository_owner }}
@@ -51,6 +52,19 @@ jobs:
 
       - name: Setup azd
         uses: Azure/setup-azd@v2
+
+      - name: Login azd with GitHub federated credential
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          set -euo pipefail
+          azd auth login \
+            --client-id "$AZURE_CLIENT_ID" \
+            --tenant-id "$AZURE_TENANT_ID" \
+            --federated-credential-provider github \
+            --no-prompt
 
       - name: Deploy rw-orchestrator with azd
         shell: bash
