@@ -111,4 +111,16 @@ jobs:
           azd env set SCAN_STAGE_ORDER "$SCAN_STAGE_ORDER"
 
           azd provision --no-prompt
-          azd deploy --no-prompt
+
+          attempt=1
+          max_attempts=3
+          until azd deploy --no-prompt; do
+            if [[ $attempt -ge $max_attempts ]]; then
+              echo "azd deploy failed after $max_attempts attempts"
+              exit 1
+            fi
+
+            echo "azd deploy failed on attempt $attempt; waiting before retrying..."
+            sleep 30
+            attempt=$((attempt + 1))
+          done
