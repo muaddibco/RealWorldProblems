@@ -70,6 +70,7 @@ jobs:
         shell: bash
         working-directory: rw-orchestrator
         env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           RW_GITHUB_TOKEN: ${{ secrets.RW_ORCHESTRATOR_GITHUB_TOKEN }}
           RW_GITHUB_WEBHOOK_SECRET: ${{ secrets.RW_ORCHESTRATOR_GITHUB_WEBHOOK_SECRET }}
         run: |
@@ -85,8 +86,14 @@ jobs:
             exit 1
           fi
 
+          if [[ -z "${AZURE_SUBSCRIPTION_ID:-}" ]]; then
+            echo "Missing required secret: AZURE_SUBSCRIPTION_ID"
+            exit 1
+          fi
+
           azd env select "$AZD_ENVIRONMENT" || azd env new "$AZD_ENVIRONMENT" --no-prompt
 
+          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
           azd env set AZURE_LOCATION "$AZURE_LOCATION"
           azd env set GITHUB_OWNER "$GITHUB_OWNER"
           azd env set GITHUB_REPO "$GITHUB_REPO"
