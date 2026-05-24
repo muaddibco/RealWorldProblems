@@ -21,7 +21,7 @@ run-name: "RW: Dedupe + Cluster | issue #${{ inputs.issue_number }} | orch ${{ i
 
 engine:
   id: copilot
-  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'summarization' }}
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.4-mini' }}
   agent: rw-deduper
 
 permissions:
