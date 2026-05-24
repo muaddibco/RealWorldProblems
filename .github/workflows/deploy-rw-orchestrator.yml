@@ -6,7 +6,7 @@ on:
       azd_environment:
         description: azd environment name
         required: false
-        default: develop
+        default: dev
       resource_group:
         description: Azure resource group name
         required: false
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-      AZD_ENVIRONMENT: ${{ inputs.azd_environment || 'develop' }}
+      AZD_ENVIRONMENT: ${{ inputs.azd_environment || 'dev' }}
       AZURE_RESOURCE_GROUP: ${{ inputs.resource_group || 'rg-develop' }}
       AZURE_LOCATION: ${{ inputs.location || 'eastus' }}
       GITHUB_OWNER: ${{ github.repository_owner }}
@@ -98,6 +98,7 @@ jobs:
 
           azd env select "$AZD_ENVIRONMENT" || azd env new "$AZD_ENVIRONMENT" --no-prompt
 
+          azd env set AZURE_ENV_NAME "$AZD_ENVIRONMENT"
           azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
           azd env set AZURE_RESOURCE_GROUP "$AZURE_RESOURCE_GROUP"
           azd env set AZURE_LOCATION "$AZURE_LOCATION"
