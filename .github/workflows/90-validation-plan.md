@@ -21,6 +21,7 @@ run-name: "RW: Validation Plan | issue #${{ inputs.issue_number }} | orch ${{ in
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.4' }}
   agent: rw-validation-planner
 
 permissions:

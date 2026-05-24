@@ -21,6 +21,7 @@ run-name: "RW: Score Problems | issue #${{ inputs.issue_number }} | orch ${{ inp
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.4' }}
   agent: rw-scorer
 
 permissions:

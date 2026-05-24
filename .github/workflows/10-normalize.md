@@ -21,6 +21,7 @@ run-name: "RW: Normalize | issue #${{ inputs.issue_number }} | orch ${{ inputs.o
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'summarization' }}
   agent: rw-normalizer
 
 permissions:

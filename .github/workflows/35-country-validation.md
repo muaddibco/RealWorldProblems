@@ -34,6 +34,7 @@ run-name: "RW: Country Validation Gate | issue #${{ inputs.issue_number }} | orc
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.4' }}
   agent: rw-country-validator
 
 permissions:

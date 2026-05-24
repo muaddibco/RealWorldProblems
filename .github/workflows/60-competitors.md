@@ -31,6 +31,7 @@ run-name: "RW: Competitor Scan | issue #${{ inputs.issue_number }} | orch ${{ in
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.5' }}
   agent: rw-competitor-scout
 
 permissions:

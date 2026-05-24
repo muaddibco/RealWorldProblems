@@ -21,6 +21,7 @@ run-name: "RW: AI Defensibility Gate | issue #${{ inputs.issue_number }} | orch 
 
 engine:
   id: copilot
+  model: ${{ vars.GH_AW_MODEL_AGENT_COPILOT || 'gpt-5.4' }}
   agent: rw-ai-defensibility
 
 permissions:
