@@ -189,6 +189,8 @@ If discovery cannot be reliably completed:
 
 Before commercial assessment, require these completed canonical islands:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
 - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
 - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
@@ -196,9 +198,12 @@ Before commercial assessment, require these completed canonical islands:
 - `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
 - `<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
 
+Each of the above may also be represented by its matching `gh-aw-island-end` marker, such as `<!-- gh-aw-island-end:40-score -->`, `<!-- gh-aw-island-end:50-solution -->`, `<!-- gh-aw-island-end:55-ai-defensibility -->`, `<!-- gh-aw-island-end:60-competitors -->`, `<!-- gh-aw-island-end:70-wedge-filter -->`, and `<!-- gh-aw-island-end:90-validation-plan -->`.
+
 For a country-dependent route resolved through the conditional gate, also require:
 
 - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`;
+  - or `<!-- gh-aw-island-end:35-country-validation -->`;
 - `Gate status: satisfied`.
 
 Require consistent fields:

@@ -211,17 +211,23 @@ Never write to any comparison or related issue.
 
 Before country validation, the issue MUST contain:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. A completed evidence island:
-   - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+  - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+  - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 
 2. A completed normalized island:
    - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+  - or `<!-- gh-aw-island-end:10-normalize -->`
 
 3. A completed dedupe island:
    - `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+  - or `<!-- gh-aw-island-end:20-dedupe -->`
 
 4. A completed software-fit island:
    - `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+  - or `<!-- gh-aw-island-end:30-software-fit -->`
 
 ### Mandatory upstream values
 

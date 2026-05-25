@@ -270,7 +270,7 @@ Where the correct label cannot be proven from the relevant island, do not guess;
 
 ## Canonical islands
 
-Use these exact markers:
+Use these exact markers, or the matching completion marker form `<!-- gh-aw-island-end:<stage-file> -->` where `<stage-file>` is the upstream workflow filename without `.md`:
 
 - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
 - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`

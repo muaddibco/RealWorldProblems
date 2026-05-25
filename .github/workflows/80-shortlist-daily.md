@@ -110,19 +110,25 @@ An issue is eligible for the ranked Top 10 only when all conditions are satisfie
 
 ### Required canonical islands
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
 - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
 - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
 - `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
 - `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
 
+Each of the above may also be represented by its matching `gh-aw-island-end` marker, such as `<!-- gh-aw-island-end:40-score -->`, `<!-- gh-aw-island-end:50-solution -->`, `<!-- gh-aw-island-end:55-ai-defensibility -->`, `<!-- gh-aw-island-end:60-competitors -->`, and `<!-- gh-aw-island-end:70-wedge-filter -->`.
+
 For `stage/7.1-validated`, also require:
 
 - `<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
+  - or `<!-- gh-aw-island-end:90-validation-plan -->`
 
 For a country-dependent item resolved through the conditional gate, also require:
 
 - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`
+  - or `<!-- gh-aw-island-end:35-country-validation -->`
 - `Gate status: satisfied`.
 
 Do not accept legacy non-canonical marker formats for the ranked list.

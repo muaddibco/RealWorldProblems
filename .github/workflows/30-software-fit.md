@@ -145,9 +145,14 @@ Do not end with prose-only output. Never write to comparison issues.
 
 Before deciding software fit, require:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+   - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 2. `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+   - or `<!-- gh-aw-island-end:10-normalize -->`
 3. `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+   - or `<!-- gh-aw-island-end:20-dedupe -->`
 
 ### Required problem and geographic values
 

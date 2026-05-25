@@ -204,29 +204,39 @@ Do not end with prose-only output.
 
 This stage occurs after scoring, solution drafting and AI-defensibility review. Before competitor research, the target issue MUST contain:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. Evidence island:
    - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+  - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 
 2. Normalized island:
    - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+  - or `<!-- gh-aw-island-end:10-normalize -->`
 
 3. Dedupe island:
    - `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+  - or `<!-- gh-aw-island-end:20-dedupe -->`
 
 4. Software-fit island:
    - `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+  - or `<!-- gh-aw-island-end:30-software-fit -->`
 
 5. Scorecard island:
    - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+  - or `<!-- gh-aw-island-end:40-score -->`
 
 6. Solution island:
    - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+  - or `<!-- gh-aw-island-end:50-solution -->`
 
 7. AI-defensibility island:
    - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+  - or `<!-- gh-aw-island-end:55-ai-defensibility -->`
 
 8. Country-validation island when the scored opportunity is country-dependent and earlier required a pre-scoring gate:
    - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`
+  - or `<!-- gh-aw-island-end:35-country-validation -->`
 
 ### Required geographic and opportunity values
 

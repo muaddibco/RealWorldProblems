@@ -213,6 +213,12 @@ The issue SHOULD also contain its completed evidence island:
 
 `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
 
+The same completion may also be represented by the upstream workflow marker `<!-- gh-aw-island-end:05-evidence-enrich -->`, where the suffix is the upstream workflow filename without `.md`.
+
+or the corresponding completion marker from the prior workflow:
+
+`<!-- gh-aw-island-end:05-evidence-enrich -->`
+
 Use `rw:evidence` to understand corrections, supported geography claims and country-validation requirements. Do not modify it.
 
 ### Missing-information handling

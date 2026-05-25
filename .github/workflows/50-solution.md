@@ -174,23 +174,31 @@ Never write to related, canonical, cluster or competitor issues.
 
 The issue MUST contain completed canonical islands:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. Evidence:
    - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+   - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 
 2. Normalized problem:
    - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+   - or `<!-- gh-aw-island-end:10-normalize -->`
 
 3. Dedupe:
    - `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+   - or `<!-- gh-aw-island-end:20-dedupe -->`
 
 4. Software fit:
    - `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+   - or `<!-- gh-aw-island-end:30-software-fit -->`
 
 5. Scorecard:
    - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+   - or `<!-- gh-aw-island-end:40-score -->`
 
 6. Country validation, only when a country-dependent issue required the conditional gate:
    - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`
+   - or `<!-- gh-aw-island-end:35-country-validation -->`
 
 ### Required values
 

@@ -182,34 +182,45 @@ Never write to related, competitor or cluster issues.
 
 The issue MUST contain completed canonical islands:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. Evidence:
    - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+   - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 
 2. Normalized problem:
    - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+   - or `<!-- gh-aw-island-end:10-normalize -->`
 
 3. Dedupe:
    - `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+   - or `<!-- gh-aw-island-end:20-dedupe -->`
 
 4. Software fit:
    - `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+   - or `<!-- gh-aw-island-end:30-software-fit -->`
 
 5. Scorecard:
    - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+   - or `<!-- gh-aw-island-end:40-score -->`
 
 6. Solution:
    - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+   - or `<!-- gh-aw-island-end:50-solution -->`
 
 7. AI defensibility:
    - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+   - or `<!-- gh-aw-island-end:55-ai-defensibility -->`
 
 8. Competitors:
    - `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
+   - or `<!-- gh-aw-island-end:60-competitors -->`
 
 9. Country validation, only when scoring required it:
    - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`
+   - or `<!-- gh-aw-island-end:35-country-validation -->`
 
-Do not accept legacy island-marker alternatives in the geography-aware pipeline. Legacy items missing canonical evidence/geographic handoffs must be returned for enrichment rather than judged on an incomplete record.
+Do not accept legacy island-marker alternatives in the geography-aware pipeline unless they use the matching `gh-aw-island-end:<stage-file>` form. Legacy items missing canonical evidence/geographic handoffs must be returned for enrichment rather than judged on an incomplete record.
 
 ---
 

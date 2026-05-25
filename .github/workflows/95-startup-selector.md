@@ -94,6 +94,8 @@ Read candidate bodies and apply the exact eligibility gate below.
 
 Rank a candidate only when it contains completed canonical islands:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
 - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
 - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
@@ -102,9 +104,12 @@ Rank a candidate only when it contains completed canonical islands:
 - `<!-- rw:validation:start --> ... <!-- rw:validation:end -->`
 - `<!-- rw:marketing-sales:start --> ... <!-- rw:marketing-sales:end -->`
 
+Each of the above may also be represented by its matching `gh-aw-island-end` marker, such as `<!-- gh-aw-island-end:40-score -->`, `<!-- gh-aw-island-end:50-solution -->`, `<!-- gh-aw-island-end:55-ai-defensibility -->`, `<!-- gh-aw-island-end:60-competitors -->`, `<!-- gh-aw-island-end:70-wedge-filter -->`, `<!-- gh-aw-island-end:90-validation-plan -->`, and `<!-- gh-aw-island-end:92-marketing-sales-complexity -->`.
+
 For a country-dependent candidate routed through conditional validation, also require:
 
 - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`;
+  - or `<!-- gh-aw-island-end:35-country-validation -->`;
 - `Gate status: satisfied`.
 
 ### Required labels

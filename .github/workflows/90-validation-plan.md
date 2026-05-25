@@ -137,16 +137,28 @@ The child experiment body must reference parent issue #${{ inputs.issue_number }
 
 Require completed canonical islands:
 
+Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
+
 1. `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
+   - or `<!-- gh-aw-island-end:05-evidence-enrich -->`
 2. `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
+   - or `<!-- gh-aw-island-end:10-normalize -->`
 3. `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
+   - or `<!-- gh-aw-island-end:20-dedupe -->`
 4. `<!-- rw:software-fit:start --> ... <!-- rw:software-fit:end -->`
+   - or `<!-- gh-aw-island-end:30-software-fit -->`
 5. `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
+   - or `<!-- gh-aw-island-end:40-score -->`
 6. `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
+   - or `<!-- gh-aw-island-end:50-solution -->`
 7. `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`
+   - or `<!-- gh-aw-island-end:55-ai-defensibility -->`
 8. `<!-- rw:competitors:start --> ... <!-- rw:competitors:end -->`
+   - or `<!-- gh-aw-island-end:60-competitors -->`
 9. `<!-- rw:wedge:start --> ... <!-- rw:wedge:end -->`
+   - or `<!-- gh-aw-island-end:70-wedge-filter -->`
 10. `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->` only when a country-dependent issue required the pre-scoring gate.
+    - or `<!-- gh-aw-island-end:35-country-validation -->`
 
 Legacy marker alternatives are not sufficient for the revised geographical-area-aware pipeline.
 
