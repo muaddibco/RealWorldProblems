@@ -176,6 +176,12 @@ Before normalizing, the issue MUST contain a completed evidence island:
 
 `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
 
+OR
+
+`<!-- gh-aw-island-end:05-evidence-enrich -->`
+
+If only the `gh-aw-island-end:05-evidence-enrich` marker is present, treat the preceding evidence-enrichment section as the evidence payload and apply the same required field checks.
+
 The evidence island must explicitly contain all of:
 
 - `Verdict: ready-for-normalization`
@@ -194,7 +200,7 @@ The evidence island must explicitly contain all of:
 
 ### Evidence gate failure
 
-If the evidence island is missing, malformed, says `needs-more-evidence`, has `Evidence status after enrichment: hypothesis-only`, or indicates a required area signal is not satisfied:
+If both accepted evidence island forms are missing, the evidence payload is malformed, says `needs-more-evidence`, has `Evidence status after enrichment: hypothesis-only`, or indicates a required area signal is not satisfied:
 
 1. Call `add_comment` listing the evidence-gate deficiency precisely.
 2. Call `add_labels` with `status/needs-info`.
@@ -589,11 +595,11 @@ Do not add score, risk, wedge, marketing/sales, geographic-area, evidence-status
 
 ## Legacy issue handling
 
-Existing `stage/0-intake` issues created before evidence enrichment was introduced may not contain an `rw:evidence` island.
+Existing `stage/0-intake` issues created before evidence enrichment was introduced may not contain an `rw:evidence` island and may instead include only `<!-- gh-aw-island-end:05-evidence-enrich -->`.
 
-Do not silently normalize those issues under this evidence-aware pipeline.
+Do not silently normalize legacy issues that lack either accepted evidence-island form or fail the required evidence-field checks.
 
-For a legacy issue without a completed evidence island:
+For a legacy issue without either accepted completed evidence-island form:
 
 - add `status/needs-info`;
 - add a comment:
