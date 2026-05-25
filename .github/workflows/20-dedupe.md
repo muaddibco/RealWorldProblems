@@ -213,6 +213,8 @@ The issue SHOULD also contain its completed evidence island:
 
 `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
 
+If issue-read output does not include HTML comments, treat the evidence handoff as present when the matching generated section heading is present with substantive content. Only use `status/needs-info` when the section content itself is missing or materially incomplete.
+
 The same completion may also be represented by the upstream workflow marker `<!-- gh-aw-island-end:05-evidence-enrich -->`, where the suffix is the upstream workflow filename without `.md`.
 
 or the corresponding completion marker from the prior workflow:

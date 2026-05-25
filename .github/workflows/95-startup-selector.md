@@ -96,6 +96,8 @@ Rank a candidate only when it contains completed canonical islands:
 
 Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
 
+If issue-read output does not include HTML comments, treat upstream handoff as present when the matching generated section heading is present with substantive content. Only use `status/needs-info` when the section content itself is missing or materially incomplete.
+
 - `<!-- rw:scorecard:start --> ... <!-- rw:scorecard:end -->`
 - `<!-- rw:solution:start --> ... <!-- rw:solution:end -->`
 - `<!-- rw:ai-defensibility:start --> ... <!-- rw:ai-defensibility:end -->`

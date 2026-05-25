@@ -272,6 +272,8 @@ Where the correct label cannot be proven from the relevant island, do not guess;
 
 Use these exact markers, or the matching completion marker form `<!-- gh-aw-island-end:<stage-file> -->` where `<stage-file>` is the upstream workflow filename without `.md`:
 
+If issue-read output omits HTML comments, treat an island as present when the matching generated section heading is present with substantive content. Only use `status/needs-info` when the section content itself is missing or materially incomplete.
+
 - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
 - `<!-- rw:normalized:start --> ... <!-- rw:normalized:end -->`
 - `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`

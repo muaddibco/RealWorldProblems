@@ -213,6 +213,19 @@ Before country validation, the issue MUST contain:
 
 Each required upstream island may appear either as the full island block or as the matching completion marker `<!-- gh-aw-island-end:<stage-file> -->`, where `<stage-file>` is the upstream workflow filename without `.md`.
 
+If issue-read output does not include HTML comments, treat upstream handoff as present when the matching generated section heading is present with substantive content:
+
+- Evidence: `### Evidence enrichment verdict`
+- Normalized problem: `### Normalized problem`
+- Dedupe: `### Dedupe and cluster decision`
+- Software fit: `### Software fit decision`
+
+When this fallback is used:
+
+- do not block solely for missing comment markers;
+- validate required values from the section content itself;
+- only apply `status/needs-info` if the section content is actually missing or materially incomplete.
+
 1. A completed evidence island:
   - `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
   - or `<!-- gh-aw-island-end:05-evidence-enrich -->`

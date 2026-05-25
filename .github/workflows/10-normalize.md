@@ -180,6 +180,8 @@ OR
 
 `<!-- gh-aw-island-end:05-evidence-enrich -->`
 
+If issue-read output does not include HTML comments, treat the evidence handoff as present when the matching generated section heading is present with substantive content. Only use `status/needs-info` when the section content itself is missing or materially incomplete.
+
 If only the `gh-aw-island-end:05-evidence-enrich` marker is present, treat the preceding evidence-enrichment section as the evidence payload and apply the same required field checks.
 
 The evidence island must explicitly contain all of:
