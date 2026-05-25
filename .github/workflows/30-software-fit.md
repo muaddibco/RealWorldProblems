@@ -114,6 +114,7 @@ Before doing anything else:
 - Do NOT use `gh`, `curl`, shell scraping, `python -c`, temporary-output parsing, reconstructed MCP payloads or local file parsing.
 - Do NOT browse the web or add external facts in this workflow.
 - Treat upstream islands as the only evidence/geographical handoff.
+- If GitHub issue-read output omits HTML comments, fall back to section-content validation instead of assuming markers are missing.
 - If GitHub issue-read tools are unavailable, emit `noop` with reason `missing GitHub read tools` and stop.
 
 ---
@@ -153,6 +154,18 @@ Each required upstream island may appear either as the full island block or as t
    - or `<!-- gh-aw-island-end:10-normalize -->`
 3. `<!-- rw:dedupe:start --> ... <!-- rw:dedupe:end -->`
    - or `<!-- gh-aw-island-end:20-dedupe -->`
+
+If issue-read output does not include HTML comments, treat upstream handoff as present when the matching generated section heading is present with substantive content:
+
+- Evidence: `### Evidence enrichment verdict`
+- Normalized problem: `### Normalized problem`
+- Dedupe: `### Dedupe and cluster decision`
+
+When this fallback is used:
+
+- do not block solely for missing comment markers;
+- validate required values from the section content itself;
+- only apply `status/needs-info` if the section content is actually missing or materially incomplete.
 
 ### Required problem and geographic values
 
