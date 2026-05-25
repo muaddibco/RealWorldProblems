@@ -107,6 +107,7 @@ Before doing anything else:
 - Read issues using GitHub MCP issue tools only.
 - Do NOT use `gh`, `curl`, shell scraping, `python -c`, temp-file parsing, reconstructed tool payloads, or external web research.
 - Use only upstream islands and explicit issue content as the source of truth.
+- If GitHub issue-read output omits HTML comments, fall back to section-content validation instead of assuming markers are missing.
 - If GitHub issue reads are unavailable, emit `noop` with reason `missing GitHub read tools`.
 
 A successful runnable plan MUST include:
@@ -159,6 +160,25 @@ Each required upstream island may appear either as the full island block or as t
    - or `<!-- gh-aw-island-end:70-wedge-filter -->`
 10. `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->` only when a country-dependent issue required the pre-scoring gate.
     - or `<!-- gh-aw-island-end:35-country-validation -->`
+
+If issue-read output does not include HTML comments, treat upstream handoff as present when the matching generated section heading is present with substantive content:
+
+- Evidence: `### Evidence enrichment verdict`
+- Normalized problem: `### Normalized problem`
+- Dedupe: `### Dedupe and cluster decision`
+- Software fit: `### Software fit decision`
+- Scorecard: `### Problem attractiveness scorecard`
+- Solution: `### Solution hypothesis`
+- AI defensibility: `### AI defensibility scorecard`
+- Competitors: `### Competitor research scope`
+- Wedge: `### Wedge decision`
+- Country validation when required: `### Country validation verdict` or `### Country validation`
+
+When this fallback is used:
+
+- do not block solely for missing comment markers;
+- validate required values from the section content itself;
+- only apply `status/needs-info` if the section content is actually missing or materially incomplete.
 
 Legacy marker alternatives are not sufficient for the revised geographical-area-aware pipeline.
 
