@@ -121,6 +121,7 @@ Before doing anything else:
 - Do NOT use `gh`, `curl`, shell scraping, `python -c`, local temp-file parsing, reconstructed MCP payloads or workflow-output files.
 - Do NOT browse the web in this stage.
 - Do NOT add facts not already supported in the upstream islands.
+- If GitHub issue-read output omits HTML comments, fall back to section-content validation instead of assuming markers are missing.
 - If GitHub issue-read tools are unavailable, emit `noop` with reason `missing GitHub read tools` and stop.
 
 ---
@@ -219,6 +220,24 @@ Each required upstream island may appear either as the full island block or as t
 9. Country validation, only when scoring required it:
    - `<!-- rw:country-validation:start --> ... <!-- rw:country-validation:end -->`
    - or `<!-- gh-aw-island-end:35-country-validation -->`
+
+If issue-read output does not include HTML comments, treat upstream handoff as present when the matching generated section heading is present with substantive content:
+
+- Evidence: `### Evidence enrichment verdict`
+- Normalized problem: `### Normalized problem`
+- Dedupe: `### Dedupe and cluster decision`
+- Software fit: `### Software fit decision`
+- Scorecard: `### Problem attractiveness scorecard`
+- Solution: `### Solution hypothesis`
+- AI defensibility: `### AI defensibility scorecard`
+- Competitors: `### Competitor research scope`
+- Country validation when required: `### Country validation verdict` or `### Country validation`
+
+When this fallback is used:
+
+- do not block solely for missing comment markers;
+- validate required values from the section content itself;
+- only apply `status/needs-info` if the section content is actually missing or materially incomplete.
 
 Do not accept legacy island-marker alternatives in the geography-aware pipeline unless they use the matching `gh-aw-island-end:<stage-file>` form. Legacy items missing canonical evidence/geographic handoffs must be returned for enrichment rather than judged on an incomplete record.
 
