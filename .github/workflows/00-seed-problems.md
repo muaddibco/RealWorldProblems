@@ -337,6 +337,7 @@ When such dependency exists:
 - set `Geographic applicability: country-dependent`;
 - list `Countries examined, if any`;
 - list `Countries requiring validation before scoring` when not fully checked;
+- when country validation is outstanding, name a finite launch scope (specific country and, if needed, specific municipality/state/province plus first segment/category) instead of placeholders like `selected country` or `selected first segment / municipality`;
 - do not make a broad area-level factual claim from evidence concerning only one country.
 
 ### Geography-mode behavior
@@ -721,7 +722,7 @@ For each created issue, use this template exactly enough for downstream agents t
 - **Geographic applicability:** globally-portable | regional | country-dependent
 - **Areas compared, if any:** <areas or none>
 - **Countries examined, if any:** <countries or none>
-- **Countries requiring validation before scoring, if any:** <countries or none>
+- **Countries requiring validation before scoring, if any:** <countries or specifically scoped country-level requirement; no placeholders>
 - **Source language(s):** <languages>
 - **Why this area matters:** ...
 - **Area-specific pain signal:** ...
@@ -748,6 +749,7 @@ Geographic applicability: <globally-portable|regional|country-dependent>
 - In `signal_first` or `buyer_first`, use `Readiness: ready-for-evidence-gate` only when the seeder's evidence requirement and startup screen pass; `05-evidence-enrich.md` still makes the advancement decision.
 - In `exploratory_hypothesis`, use `Readiness: requires-evidence-enrichment` unless qualifying evidence was actually gathered.
 - Do not generalize a finding from one country to an entire geographical area without supporting area-level or multi-country evidence.
+- For `country-dependent` seeds, do not leave `Countries requiring validation before scoring` as a placeholder; provide a concrete initial country-check scope that downstream workflows can verify without inference.
 
 ### Labels
 

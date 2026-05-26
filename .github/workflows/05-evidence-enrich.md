@@ -247,7 +247,7 @@ Expected geographical fields:
 - `**Geographic applicability:** globally-portable|regional|country-dependent`
 - `**Areas compared, if any:** <areas or none>`
 - `**Countries examined, if any:** <countries or none>`
-- `**Countries requiring validation before scoring, if any:** <countries or none>`
+- `**Countries requiring validation before scoring, if any:** <countries or specifically scoped country-level requirement; no placeholders>`
 - `**Source language(s):** <languages>`
 - `**Why this area matters:**`
 - `**Area-specific pain signal:**`
@@ -275,6 +275,11 @@ If the candidate lacks a usable `Geographic area` or `Geographic applicability`,
 - add `status/needs-info`.
 
 Do not infer the active area from a single external source.
+
+If `Geographic applicability: country-dependent` and `Country validation before scoring: outstanding`, do not advance with a vague scope such as `selected country`, `selected municipality`, or `selected first segment / municipality`:
+
+- require a finite, named country-check scope that downstream country validation can verify directly;
+- include the initial municipality/state/province and first segment/category when those are necessary for local process checks.
 
 ---
 
@@ -443,7 +448,7 @@ Set `Verdict: ready-for-normalization` only when ALL are true:
 4. Required geographical signal is satisfied:
    - for a concrete seeded area when `${{ inputs.require_area_signal }}` is `true`; or
    - always for `regional` candidates.
-5. For a `country-dependent` candidate, at least one relevant country mechanism used to support the problem is sourced, and any further required country checks are explicitly listed as pre-scoring requirements.
+5. For a `country-dependent` candidate, at least one relevant country mechanism used to support the problem is sourced, and any further required country checks are explicitly listed as pre-scoring requirements in a finite, concrete scope (no placeholders like `selected country` or `selected first segment / municipality`).
 6. Evidence supports material pain or a structurally meaningful failure mechanism; it does not merely indicate a possible product feature.
 7. An identifiable likely payer or economic beneficiary is recorded, even when payment intent remains a hypothesis.
 8. Initial software-enabled value does not rely on an unacknowledged heroic dependency, unavailable data source or unspecified regulatory permission.
@@ -475,7 +480,7 @@ Use this structure:
 - Area-signal requirement: satisfied | not-satisfied | not-required
 - Countries examined: <countries or none>
 - Country validation before scoring: satisfied | outstanding | not-required
-- Countries requiring validation before scoring: <countries or none>
+- Countries requiring validation before scoring: <countries or specifically scoped country-level requirement; no placeholders>
 
 ### Claims checked
 | Candidate claim | Assessment | Evidence / correction | Geographic relevance |

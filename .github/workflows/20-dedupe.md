@@ -209,6 +209,8 @@ It must also provide, when applicable:
 - `Countries requiring validation before scoring`;
 - `Pre-scoring geographic gate`.
 
+For `country-dependent` issues with `Country validation before scoring: outstanding`, the required countries/checks must be finite and concrete. Do not preserve placeholders such as `selected country`, `selected municipality`, or `selected first segment / municipality`.
+
 The issue SHOULD also contain its completed evidence island:
 
 `<!-- rw:evidence:start --> ... <!-- rw:evidence:end -->`
@@ -455,7 +457,7 @@ Use this structure:
 - **Target geographic area:** <area>
 - **Target geographic applicability:** globally-portable | regional | country-dependent
 - **Country validation before scoring:** satisfied | outstanding | not-required
-- **Countries requiring validation before scoring:** <countries or none>
+- **Countries requiring validation before scoring:** <countries or specifically scoped country-level requirement; no placeholders>
 - **Pre-scoring geographic gate preserved:** <gate text or none>
 
 ### Nearest issues checked

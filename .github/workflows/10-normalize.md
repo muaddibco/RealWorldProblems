@@ -222,10 +222,12 @@ However:
 
 - the normalized island MUST state that country validation remains outstanding before scoring;
 - the list under `Countries requiring validation before scoring` MUST be preserved;
+- the list MUST remain finite and concrete; do not normalize placeholders like `selected country`, `selected municipality`, or `selected first segment / municipality`;
 - no normalized wording may generalize a checked country's mechanism across the entire geographical area;
 - downstream workflows responsible for scoring readiness must later block scoring until the outstanding country checks are satisfied.
 
 If `Country validation before scoring: outstanding` but no countries or specific requirement are listed, block normalization with `status/needs-info`.
+If `Country validation before scoring: outstanding` uses placeholder or non-finite wording, block normalization with `status/needs-info`.
 
 ---
 
@@ -537,7 +539,7 @@ Use this structure:
 - **Area-specific mechanism or signal:** <concise explanation>
 - **Countries examined:** <countries or none>
 - **Country validation before scoring:** satisfied | outstanding | not-required
-- **Countries requiring validation before scoring:** <countries or none>
+- **Countries requiring validation before scoring:** <countries or specifically scoped country-level requirement; no placeholders>
 - **Pre-scoring geographic gate:** <`None` or `Do not score until listed country-level validation is completed.`>
 - **Likely payer / economic beneficiary:** <mark as hypothesis unless primary-supported>
 - **Next validation-critical unknown:** ...

@@ -180,7 +180,7 @@ Read from the evidence and normalized islands:
 - `Area-specific mechanism or signal`;
 - `Countries examined: <countries or none>`;
 - `Country validation before scoring: satisfied|outstanding|not-required`;
-- `Countries requiring validation before scoring: <countries/checks or none>`;
+- `Countries requiring validation before scoring: <countries/checks or specifically scoped country-level requirement; no placeholders>`;
 - `Pre-scoring geographic gate: <gate or none>`.
 
 ### Required dedupe disposition
@@ -200,6 +200,7 @@ Hold at `stage/2-deduped` with `status/needs-info` when:
 - a required island is missing;
 - geographical area, applicability or country-validation status is missing;
 - `country-dependent` + `outstanding` lacks a named country/check scope or a pre-scoring gate;
+- `country-dependent` + `outstanding` uses placeholder/non-finite scope text (for example `selected country`, `selected municipality`, or `selected first segment / municipality`);
 - `globally-portable` or `regional` contains an unexplained outstanding country-validation gate;
 - the upstream evidence records that the core problem is materially invalid;
 - no non-duplicate dedupe decision exists.
@@ -363,7 +364,7 @@ Use this exact structure:
 - **Geographic area:** <area>
 - **Geographic applicability:** globally-portable | regional | country-dependent
 - **Country validation before scoring inherited:** satisfied | outstanding | not-required
-- **Countries requiring validation before scoring:** <countries/checks or none>
+- **Countries requiring validation before scoring:** <countries/checks or specifically scoped country-level requirement; no placeholders>
 - **Pre-scoring geographic gate preserved:** <gate text or none>
 - **Routing after software fit:** ready-for-scoring | country-validation-required | archive-not-software
 
