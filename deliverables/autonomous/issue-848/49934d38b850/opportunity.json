@@ -1,0 +1,18 @@
+{
+  "headline": "GitHub[muaddibco/RealWorldProblems]: Problem: Freelancers traveling for work can't reliably find vetted coworking day-pass options",
+  "url": "https://github.com/muaddibco/RealWorldProblems/issues/848",
+  "expected_usd": 20.0,
+  "strategy": "锁定明码 bounty；交付代码+run_log+sample_data，并准备自动交割链接。",
+  "raw_expected": "20.00 USD",
+  "bounty_literal": "$20",
+  "source_line": "## 🚨 发现新商机：GitHub[muaddibco/RealWorldProblems]: Problem: Freelancers traveling for work can't reliably find vetted coworking day-pass options",
+  "kind": "generic_automation",
+  "difficulty": 1.0,
+  "score": 20.0,
+  "oid": "5860654b336e90750b191854cfcdf9ae4271141bc9c8ed51e7b44622356ce92c",
+  "payout": {
+    "asset": "USDT",
+    "chain": "EVM",
+    "wallet": "0xF57503F99fA20b912200ed90D26d945093136ef5"
+  }
+}
